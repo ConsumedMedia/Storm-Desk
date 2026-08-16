@@ -26,7 +26,7 @@ Do not add multiplayer, networking, accounts, external services, Steamworks, ach
 
 - Run `godot --headless --path . --script res://tests/run_tests.gd` after simulation or coordinator changes.
 - Confirm the main scene starts without parser/runtime errors.
-- For layout changes, run the relevant graphics helpers (`tests/capture_ui.gd`, `tests/capture_maintenance.gd`, or `tests/capture_tutorial.gd`) and inspect their `.godot/*.png` output at 1280×720.
+- For layout changes, run the relevant graphics helpers under `tests/capture_*.gd` and inspect their `.godot/*.png` output at 1280×720. Current captures cover network planning, maintenance, warning selection, daily results, and onboarding.
 - Add or adjust deterministic checks for every material calculation or phase transition.
 - Never claim a path works unless it was run. Record anything that could not be validated.
 

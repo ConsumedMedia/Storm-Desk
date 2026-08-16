@@ -17,12 +17,13 @@ Last updated: 2026-08-16
 - Expanded the campaign into a five-day first week: Day Four opens with a High Ridge outage and repair-versus-reroute choice; Day Five makes prior routes affect a severe final forecast.
 - Added an Industrial alternate path to both Farm Spire and Harbor, authored opening damage through `NetworkModel`, dynamic five-day reporting, and first-week performance thresholds.
 - Added a dedicated overnight maintenance phase after Days One through Four with next-day outlooks, one separate install-or-repair action, maintenance-first opening outages, and daily collection/survey capacity.
-- Expanded to 72 dependency-free automated checks plus graphics-backed 1280×720 Day Four, maintenance, and tutorial regression captures.
+- Added an interface feedback and atmosphere pass: code-drawn weather motion, phase accents, resource pulses, accessible network states, warning/result district markers, draft summaries, assessment-led reports, explicit button focus styling, and keyboard-focused modals.
+- Expanded to 77 dependency-free automated checks plus five graphics-backed 1280×720 regression captures covering Day Four, maintenance, warnings, results, and onboarding.
 - Added actual implementation documentation.
 
 ## Current work
 
-The contained first-week and between-day maintenance milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
+The contained first-week, between-day maintenance, and interface feedback milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
 
 ## Remaining milestones
 

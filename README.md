@@ -46,7 +46,8 @@ Mouse and keyboard focus navigation are supported by standard Godot Controls. Th
 - Correct, false, missed, exaggerated, underestimated, timely, and late warning outcomes
 - Trust, budget, damage, vulnerability, observation, warning-operation, and repair calculations
 - Daily evidence explanations, calculation breakdowns, final summary, and in-app restart
-- Local placeholder interface made only from Godot Controls and built-in fonts
+- Code-drawn atmospheric backdrop, phase-colored status, resource feedback, accessible network legend, warning/protected/missed district markers, and assessment-led reports
+- Local placeholder interface made only from Godot Controls, draw calls, and built-in fonts
 
 Out of scope: multiplayer, networking, accounts, Steam integration, saves, achievements, final art, realistic fluid simulation, characters, staff systems, localization, and external services.
 
@@ -58,9 +59,9 @@ Run the repository-native checks without installing a test framework:
 godot --headless --path . --script res://tests/run_tests.gd
 ```
 
-The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, opening outages, overnight action limits, repairs, separate maintenance and observation capacity, persistent hazard damage, network-driven evidence, guided-tour progression, required interactions, skip, local completion preference, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-16 passed 72 checks with exit code 0 under Godot 4.7.1.
+The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, opening outages, overnight action limits, repairs, separate maintenance and observation capacity, persistent hazard damage, network-driven evidence, warning markers, draft summaries, result assessments, guided-tour progression, required interactions, skip, local completion preference, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-16 passed 77 checks with exit code 0 under Godot 4.7.1.
 
-`tests/capture_ui.gd`, `tests/capture_maintenance.gd`, and `tests/capture_tutorial.gd` are visual-QA helpers. Run them with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical UI bounds. They cover the dense Day Four recovery screen, the first overnight desk, and guided onboarding.
+Five graphics-backed visual-QA helpers cover the dense Day Four recovery screen, first overnight desk, warning draft, daily result, and guided onboarding. Run `tests/capture_ui.gd`, `tests/capture_maintenance.gd`, `tests/capture_warning.gd`, `tests/capture_result.gd`, and `tests/capture_tutorial.gd` with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical states and bounds.
 
 ## Repository structure
 
@@ -77,5 +78,5 @@ The suite validates hazard evaluation, district vulnerability, warning timing, d
 - Scenario records are centralized in typed GDScript dictionaries; hazards and districts are standalone custom Resources.
 - The district map remains a structured board; network construction uses a fixed-node graph rather than free placement or terrain simulation.
 - The UI is tuned for a 1280×720 reference window; very small windows are not a target.
-- Audio, animation, final art, accessibility narration, and localization are deferred.
+- Audio, full production animation, final art, accessibility narration, and localization are deferred.
 - Guided-tour completion is the only persisted preference. It is stored in `user://settings.cfg`; Rules/Help can reset and replay it. No session save/load exists.

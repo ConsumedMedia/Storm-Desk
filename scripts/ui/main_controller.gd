@@ -15,6 +15,7 @@ const COLOR_WARNING := Color("f0b45a")
 const COLOR_TEXT := Color("eaf1f5")
 const COLOR_MUTED := Color("aebfca")
 const MAINTENANCE_ACTION_LIMIT := 1
+const ATMOSPHERE_BACKDROP_SCRIPT := preload("res://scripts/ui/atmosphere_backdrop.gd")
 
 var hazards: Array[HazardDefinition] = []
 var districts: Array[DistrictDefinition] = []
@@ -35,7 +36,10 @@ var reports: Array[Dictionary] = []
 var tutorial_controller: TutorialController
 var maintenance_actions_used: int = 0
 var opening_damage_applied_days: Array[int] = []
+var selected_district: StringName = &""
+var district_outcomes: Dictionary = {}
 
+var atmosphere: Control
 var header_panel: PanelContainer
 var status_panel: PanelContainer
 var map_panel: PanelContainer
@@ -57,10 +61,13 @@ var district_detail: Label
 var event_log: TextEdit
 var continue_button: Button
 var footer_note: Label
+var action_feedback_label: Label
 var help_button: Button
 var hazard_option: OptionButton
 var severity_option: OptionButton
 var district_checks: Dictionary = {}
+var district_buttons: Dictionary = {}
+var warning_summary_label: Label
 var modal_layer: Control
 
 func _ready() -> void:
@@ -75,10 +82,9 @@ func _ready() -> void:
 	restart_session()
 
 func build_interface() -> void:
-	var background := ColorRect.new()
-	background.color = COLOR_BG
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
+	atmosphere = ATMOSPHERE_BACKDROP_SCRIPT.new() as Control
+	atmosphere.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(atmosphere)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -151,6 +157,11 @@ func build_interface() -> void:
 	footer_note = make_label("Choices remain editable until you confirm a warning.", 14, COLOR_MUTED)
 	footer_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(footer_note)
+	action_feedback_label = make_label("", 14, COLOR_ACCENT)
+	action_feedback_label.custom_minimum_size.x = 300
+	action_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	action_feedback_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	footer.add_child(action_feedback_label)
 	continue_button = make_button("Continue")
 	continue_button.custom_minimum_size = Vector2(240, 44)
 	continue_button.pressed.connect(on_continue_pressed)
@@ -176,6 +187,7 @@ func build_map_panel() -> Control:
 		button.custom_minimum_size.y = 58
 		button.tooltip_text = district.description
 		button.pressed.connect(show_district.bind(district))
+		district_buttons[district.id] = button
 		box.add_child(button)
 	district_detail = make_label("Select a district for vulnerability details.", 14, COLOR_MUTED)
 	district_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -249,7 +261,7 @@ func build_warning_controls() -> void:
 		severity_option.add_item("Level %d" % severity)
 		severity_option.set_item_metadata(severity_option.item_count - 1, severity)
 	severity_option.select(1)
-	severity_option.item_selected.connect(func(index: int) -> void: selected_severity = int(severity_option.get_item_metadata(index)))
+	severity_option.item_selected.connect(on_severity_selected)
 	warning_box.add_child(severity_option)
 	warning_box.add_child(make_label("Districts to warn", 15, COLOR_MUTED))
 	for district: DistrictDefinition in districts:
@@ -259,6 +271,11 @@ func build_warning_controls() -> void:
 		check.toggled.connect(on_district_toggled.bind(district.id))
 		district_checks[district.id] = check
 		warning_box.add_child(check)
+	var warning_status_panel := PanelContainer.new()
+	warning_status_panel.add_theme_stylebox_override("panel", bordered_panel_style(COLOR_PANEL_ALT, COLOR_MUTED, 6, 9))
+	warning_summary_label = make_wrapped_label("STAND DOWN selected. No warning will be issued.", 14, COLOR_MUTED)
+	warning_status_panel.add_child(warning_summary_label)
+	warning_box.add_child(warning_status_panel)
 
 func restart_session() -> void:
 	budget = 30
@@ -269,6 +286,8 @@ func restart_session() -> void:
 	reports.clear()
 	maintenance_actions_used = 0
 	opening_damage_applied_days.clear()
+	selected_district = &""
+	action_feedback_label.text = ""
 	event_log.text = ""
 	load_day()
 
@@ -281,6 +300,8 @@ func load_day() -> void:
 	observation_spend = 0
 	selected_hazard = &""
 	selected_severity = 2
+	selected_district = &""
+	district_outcomes.clear()
 	warned_districts.clear()
 	hazard_option.select(0)
 	severity_option.select(1)
@@ -323,6 +344,10 @@ func set_phase(next_phase: Phase) -> void:
 		Phase.MAINTENANCE: "OVERNIGHT MAINTENANCE",
 	}
 	phase_label.text = "PHASE  /  %s" % str(phase_names[phase])
+	var accent: Color = phase_accent_color()
+	phase_label.add_theme_color_override("font_color", accent)
+	status_panel.add_theme_stylebox_override("panel", bordered_panel_style(COLOR_PANEL_ALT, accent, 8, 12))
+	atmosphere.call("set_phase", int(phase))
 	match phase:
 		Phase.MORNING_BRIEFING:
 			instruction_label.text = "Required: read the briefing."
@@ -346,6 +371,12 @@ func set_phase(next_phase: Phase) -> void:
 		Phase.STORM_RESOLUTION:
 			instruction_label.text = "The actual weather is being resolved."
 			continue_button.disabled = true
+		Phase.DAILY_REPORT:
+			instruction_label.text = "Review the outcome, consequences, and calculation."
+			continue_button.disabled = true
+		Phase.FINAL_REPORT:
+			instruction_label.text = "Review the completed first-week performance report."
+			continue_button.disabled = true
 		Phase.MAINTENANCE:
 			instruction_label.text = "Optional: install or repair once, then begin the next forecast day."
 			continue_button.text = "Begin Day %d" % (day_index + 2)
@@ -354,8 +385,9 @@ func set_phase(next_phase: Phase) -> void:
 			continue_button.disabled = true
 	network_scroll.visible = phase != Phase.WARNING_DECISION and phase != Phase.WARNING_CONFIRMATION
 	warning_box.visible = phase == Phase.WARNING_DECISION or phase == Phase.WARNING_CONFIRMATION
-	footer_note.text = "One optional overnight action; continue whenever ready." if phase == Phase.MAINTENANCE else "Choices remain editable until you confirm a warning."
+	footer_note.text = phase_footer_note()
 	refresh_all()
+	animate_phase_transition()
 	phase_changed.emit(int(phase))
 
 func refresh_all() -> void:
@@ -372,6 +404,8 @@ func refresh_all() -> void:
 		capacity_label.text = "CAPACITY %d / %d" % [maxi(0, capacity - observations_used), capacity]
 	refresh_readings()
 	refresh_network_actions()
+	refresh_district_markers()
+	refresh_warning_summary()
 
 func refresh_readings() -> void:
 	clear_children(reading_box)
@@ -395,7 +429,7 @@ func refresh_readings() -> void:
 		if quality == "faulty":
 			tag = "SUSPECT"
 		var row := PanelContainer.new()
-		row.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL_ALT, 5))
+		row.add_theme_stylebox_override("panel", reading_panel_style(quality))
 		var row_box := VBoxContainer.new()
 		row.add_child(row_box)
 		row_box.add_child(make_label("%s  [%s]" % [str(reading.get("instrument", "Instrument")), tag], 14, COLOR_WARNING if quality != "clear" else COLOR_MUTED))
@@ -493,8 +527,11 @@ func install_network_equipment(selector: OptionButton) -> void:
 	consume_maintenance_action(cost)
 	if equipment_type == &"relay":
 		log_event("Installed a relay at %s." % network_model.site_label(selected_network_site))
+		show_action_feedback("−%d budget  •  Relay installed at %s" % [cost, network_model.site_label(selected_network_site)], COLOR_WARNING)
 	else:
 		log_event("Installed a %s at %s." % [NetworkModel.SENSOR_LABELS[equipment_type], network_model.site_label(selected_network_site)])
+		show_action_feedback("−%d budget  •  %s installed" % [cost, NetworkModel.SENSOR_LABELS[equipment_type]], COLOR_WARNING)
+	pulse_resource_label(budget_label, COLOR_WARNING)
 	refresh_all()
 
 func repair_selected_site() -> void:
@@ -509,6 +546,8 @@ func repair_selected_site() -> void:
 		return
 	consume_maintenance_action(3)
 	log_event(repair_message)
+	show_action_feedback("−3 budget  •  %s" % repair_message, COLOR_WARNING)
+	pulse_resource_label(budget_label, COLOR_WARNING)
 	refresh_all()
 
 func collect_connected_readings() -> void:
@@ -523,6 +562,9 @@ func collect_connected_readings() -> void:
 	consume_network_action(1)
 	var revealed: int = reveal_network_readings()
 	log_event("Collected %d connected network reading%s." % [revealed, "" if revealed == 1 else "s"])
+	show_action_feedback("−1 budget  •  %d connected reading%s received" % [revealed, "" if revealed == 1 else "s"], COLOR_ACCENT)
+	pulse_resource_label(budget_label, COLOR_WARNING)
+	pulse_resource_label(capacity_label, COLOR_WARNING)
 	refresh_all()
 
 func can_take_network_action() -> bool:
@@ -608,6 +650,9 @@ func request_observation(action: Dictionary) -> void:
 	if not found:
 		readings.append({"id": reveal_id, "instrument": "Remote Network", "value": action["value"], "quality": action["quality"], "supports": action.get("supports", scenario["hazard"]), "visible": true, "faulty": false})
 	log_event(str(action["log"]))
+	show_action_feedback("−%d budget  •  Survey received" % cost, COLOR_ACCENT)
+	pulse_resource_label(budget_label, COLOR_WARNING)
+	pulse_resource_label(capacity_label, COLOR_WARNING)
 	refresh_all()
 
 func on_continue_pressed() -> void:
@@ -649,16 +694,22 @@ func confirm_warning() -> void:
 	trust = maxi(0, trust + int(result["trust_delta"]))
 	# Observation spend was paid immediately, so apply the remainder of the daily result here.
 	budget += int(result["budget_delta"]) + observation_spend
+	var trust_color: Color = COLOR_ACCENT if int(result["trust_delta"]) >= 0 else Color("e28a94")
+	show_action_feedback("Trust %+d  •  Budget %+d  •  Damage %d" % [int(result["trust_delta"]), int(result["budget_delta"]), int(result["damage"])], trust_color)
+	pulse_resource_label(trust_label, trust_color)
+	pulse_resource_label(budget_label, COLOR_WARNING)
 	var report: Dictionary = result.duplicate(true)
 	report["day"] = int(scenario["day"])
 	report["hazard"] = scenario["hazard"]
 	reports.append(report)
+	record_district_outcomes()
 	show_daily_report(result)
 
 func show_daily_report(result: Dictionary) -> void:
 	set_phase(Phase.DAILY_REPORT)
 	var actual: HazardDefinition = hazard_by_id(StringName(scenario["hazard"]))
-	var body: String = "ACTUAL WEATHER: %s — Level %d\n%s\n\n%s\n\n" % [actual.display_name, int(scenario["severity"]), str(scenario["outcome_note"]), "WARNING TIMING: LATE" if bool(result["late"]) else "WARNING TIMING: TIMELY"]
+	var verdict: String = daily_verdict(result)
+	var body: String = "ASSESSMENT: %s\n\nACTUAL WEATHER: %s — Level %d\n%s\n\n%s\n\n" % [verdict, actual.display_name, int(scenario["severity"]), str(scenario["outcome_note"]), "WARNING TIMING: LATE" if bool(result["late"]) else "WARNING TIMING: TIMELY"]
 	body += "Damage: %d   Protected: %d   Missed: %d   False warnings: %d\nTrust: %+d → %d   Budget: %+d → %d\n\nCALCULATION\n• %s" % [int(result["damage"]), int(result["protected"]), int(result["missed"]), int(result["false_warnings"]), int(result["trust_delta"]), trust, int(result["budget_delta"]), budget, "\n• ".join(result["lines"])]
 	var final_day: bool = day_index >= scenarios.size() - 1
 	show_modal("DAY %d REPORT" % int(scenario["day"]), body, "View final report" if final_day else "Review overnight network", show_final_report if final_day else open_maintenance)
@@ -717,18 +768,29 @@ func on_hazard_selected(index: int) -> void:
 			check.set_pressed_no_signal(false)
 	if selected_hazard == &"":
 		warned_districts.clear()
+	refresh_district_markers()
+	refresh_warning_summary()
 	hazard_selection_made.emit()
+
+func on_severity_selected(index: int) -> void:
+	selected_severity = int(severity_option.get_item_metadata(index))
+	refresh_warning_summary()
 
 func on_district_toggled(enabled: bool, district_id: StringName) -> void:
 	if enabled and not warned_districts.has(district_id):
 		warned_districts.append(district_id)
 	elif not enabled:
 		warned_districts.erase(district_id)
+	refresh_district_markers()
+	refresh_warning_summary()
+	show_action_feedback("%s warning marker: %s" % ["Added" if enabled else "Removed", district_by_id(district_id).display_name], COLOR_WARNING if enabled else COLOR_MUTED)
 	district_warning_changed.emit()
 
 func show_district(district: DistrictDefinition) -> void:
+	selected_district = district.id
 	district_detail.text = "%s\n\n%s\n\nVulnerability multipliers\nSparkstorm %.1fx  /  Glasswind %.1fx  /  Cloudburst %.1fx" % [district.display_name, district.description, district.vulnerability_for(&"sparkstorm"), district.vulnerability_for(&"glasswind"), district.vulnerability_for(&"cloudburst")]
 	log_event("Map selected: %s" % district.display_name)
+	refresh_district_markers()
 	district_inspected.emit()
 
 func show_help() -> void:
@@ -772,6 +834,7 @@ func tutorial_target(target_id: StringName) -> Control:
 func show_modal(title_text: String, body_text: String, primary_text: String, primary_action: Callable, secondary_text: String = "", secondary_action: Callable = Callable()) -> void:
 	clear_children(modal_layer)
 	modal_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	modal_layer.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	var scrim := ColorRect.new()
 	scrim.color = Color(0.02, 0.04, 0.07, 0.82)
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -813,10 +876,14 @@ func show_modal(title_text: String, body_text: String, primary_text: String, pri
 		primary_action.call()
 	)
 	actions.add_child(primary)
+	primary.call_deferred("grab_focus")
+	var modal_tween: Tween = create_tween()
+	modal_tween.tween_property(modal_layer, "modulate", Color.WHITE, 0.18)
 
 func close_modal() -> void:
 	clear_children(modal_layer)
 	modal_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	modal_layer.modulate = Color.WHITE
 
 func log_event(message: String) -> void:
 	if event_log.text.is_empty():
@@ -824,6 +891,124 @@ func log_event(message: String) -> void:
 	else:
 		event_log.text += "\n• %s" % message
 	event_log.scroll_vertical = 99999
+
+func refresh_district_markers() -> void:
+	var warning_phase: bool = phase == Phase.WARNING_DECISION or phase == Phase.WARNING_CONFIRMATION
+	for district: DistrictDefinition in districts:
+		var button: Button = district_buttons.get(district.id) as Button
+		if button == null:
+			continue
+		var warned: bool = warning_phase and warned_districts.has(district.id)
+		var selected: bool = selected_district == district.id
+		var outcome: String = str(district_outcomes.get(district.id, "")) if not warning_phase else ""
+		var state_label: String = "WARNING" if warned else outcome if not outcome.is_empty() else "SELECTED" if selected else ""
+		button.text = "%s  ◆  %s" % [state_label, district.display_name]
+		button.text = button.text.strip_edges()
+		var outcome_color: Color = COLOR_ACCENT if outcome == "PROTECTED" else Color("e28a94") if outcome == "MISSED" else COLOR_WARNING
+		var border: Color = COLOR_WARNING if warned else outcome_color if not outcome.is_empty() else COLOR_ACCENT if selected else Color("40576a")
+		var background: Color = Color("3b352d") if warned else Color(border, 0.16) if not outcome.is_empty() else Color("213a46") if selected else Color("17222d")
+		button.add_theme_stylebox_override("normal", bordered_panel_style(background, border, 5, 10, 2 if warned or selected or not outcome.is_empty() else 1))
+		button.add_theme_color_override("font_color", border if warned or not outcome.is_empty() else COLOR_TEXT)
+
+func record_district_outcomes() -> void:
+	district_outcomes.clear()
+	var threatened: Array = scenario["threatened"] as Array
+	var correct_hazard: bool = selected_hazard == StringName(scenario["hazard"])
+	for district: DistrictDefinition in districts:
+		if threatened.has(district.id):
+			district_outcomes[district.id] = "PROTECTED" if correct_hazard and warned_districts.has(district.id) else "MISSED"
+		elif warned_districts.has(district.id):
+			district_outcomes[district.id] = "FALSE"
+
+func refresh_warning_summary() -> void:
+	if warning_summary_label == null:
+		return
+	if selected_hazard == &"":
+		warning_summary_label.text = "STAND DOWN  •  No warning will be issued."
+		warning_summary_label.add_theme_color_override("font_color", COLOR_MUTED)
+		return
+	var district_names: Array[String] = []
+	for district: DistrictDefinition in districts:
+		if warned_districts.has(district.id):
+			district_names.append(district.display_name.trim_suffix(" District"))
+	var hazard: HazardDefinition = hazard_by_id(selected_hazard)
+	var targets: String = ", ".join(district_names) if not district_names.is_empty() else "NO DISTRICTS MARKED"
+	warning_summary_label.text = "DRAFT  •  %s LEVEL %d  •  %s" % [hazard.display_name.to_upper(), selected_severity, targets]
+	warning_summary_label.add_theme_color_override("font_color", COLOR_ACCENT if not district_names.is_empty() else COLOR_WARNING)
+
+func daily_verdict(result: Dictionary) -> String:
+	if bool(result["correct_hazard"]) and int(result["missed"]) == 0 and int(result["false_warnings"]) == 0:
+		return "LATE BUT USEFUL" if bool(result["late"]) else "EFFECTIVE WARNING"
+	if bool(result["correct_hazard"]):
+		return "PARTIAL COVERAGE"
+	if selected_hazard == &"":
+		return "NO WARNING ISSUED"
+	return "INCORRECT WARNING"
+
+func show_action_feedback(message: String, color: Color) -> void:
+	action_feedback_label.text = message
+	action_feedback_label.add_theme_color_override("font_color", color)
+	action_feedback_label.modulate = Color(1.0, 1.0, 1.0, 0.45)
+	var feedback_tween: Tween = create_tween()
+	feedback_tween.tween_property(action_feedback_label, "modulate", Color.WHITE, 0.16)
+
+func pulse_resource_label(label: Label, color: Color) -> void:
+	label.add_theme_color_override("font_color", color)
+	var pulse_tween: Tween = create_tween()
+	pulse_tween.tween_interval(0.35)
+	pulse_tween.tween_callback(func() -> void: label.add_theme_color_override("font_color", COLOR_TEXT))
+
+func animate_phase_transition() -> void:
+	status_panel.modulate = Color(1.0, 1.0, 1.0, 0.55)
+	var phase_tween: Tween = create_tween()
+	phase_tween.tween_property(status_panel, "modulate", Color.WHITE, 0.20)
+
+func phase_accent_color() -> Color:
+	match phase:
+		Phase.WARNING_DECISION, Phase.WARNING_CONFIRMATION:
+			return COLOR_WARNING
+		Phase.STORM_RESOLUTION, Phase.DAILY_REPORT:
+			return Color("e28a94")
+		Phase.MAINTENANCE:
+			return Color("9aa8e8")
+	return COLOR_ACCENT
+
+func phase_footer_note() -> String:
+	match phase:
+		Phase.MORNING_BRIEFING:
+			return "Morning briefing open."
+		Phase.OBSERVATION:
+			return "Inspect readings and district vulnerabilities before continuing."
+		Phase.NETWORK_PLANNING:
+			return "Daily evidence actions can affect warning preparation time."
+		Phase.WARNING_DECISION, Phase.WARNING_CONFIRMATION:
+			return "Choices remain editable until you confirm a warning."
+		Phase.DAILY_REPORT:
+			return "Outcome report open; calculations remain available by scrolling."
+		Phase.FINAL_REPORT:
+			return "First-week performance report open."
+		Phase.MAINTENANCE:
+			return "One optional overnight action; continue whenever ready."
+	return "Storm resolution in progress."
+
+func reading_panel_style(quality: String) -> StyleBoxFlat:
+	var border: Color = COLOR_ACCENT
+	match quality:
+		"missing":
+			border = Color("718392")
+		"imprecise":
+			border = COLOR_WARNING
+		"faulty":
+			border = Color("e28a94")
+	var style: StyleBoxFlat = bordered_panel_style(COLOR_PANEL_ALT, border, 5, 10)
+	style.border_width_left = 4
+	return style
+
+func district_by_id(id: StringName) -> DistrictDefinition:
+	for district: DistrictDefinition in districts:
+		if district.id == id:
+			return district
+	return districts[0]
 
 func hazard_by_id(id: StringName) -> HazardDefinition:
 	for hazard: HazardDefinition in hazards:
@@ -849,7 +1034,19 @@ func make_button(text_value: String) -> Button:
 	button.text = text_value
 	button.add_theme_font_size_override("font_size", 15)
 	button.focus_mode = Control.FOCUS_ALL
+	button.add_theme_stylebox_override("normal", bordered_panel_style(Color("17222d"), Color("40576a"), 5, 9))
+	button.add_theme_stylebox_override("hover", bordered_panel_style(Color("263c49"), COLOR_ACCENT, 5, 9, 2))
+	button.add_theme_stylebox_override("pressed", bordered_panel_style(Color("2c403c"), COLOR_WARNING, 5, 9, 2))
+	button.add_theme_stylebox_override("focus", bordered_panel_style(Color(0.0, 0.0, 0.0, 0.0), COLOR_WARNING, 5, 7, 2))
+	button.add_theme_stylebox_override("disabled", bordered_panel_style(Color("121b24"), Color("334451"), 5, 9))
+	button.add_theme_color_override("font_disabled_color", Color("718392"))
 	return button
+
+func bordered_panel_style(color: Color, border_color: Color, radius: int, padding: int = 12, border_width: int = 1) -> StyleBoxFlat:
+	var style: StyleBoxFlat = panel_style(color, radius, padding)
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	return style
 
 func panel_style(color: Color, radius: int, padding: int = 12) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

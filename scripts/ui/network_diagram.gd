@@ -7,7 +7,7 @@ var model: NetworkModel
 var selected_site: StringName = &"ridge"
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(330, 155)
+	custom_minimum_size = Vector2(330, 165)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 func set_model(value: NetworkModel) -> void:
@@ -21,6 +21,12 @@ func set_selected_site(site_id: StringName) -> void:
 func _draw() -> void:
 	if model == null:
 		return
+	draw_line(Vector2(10.0, 12.0), Vector2(31.0, 12.0), Color("55c2b5"), 3.0)
+	draw_string(ThemeDB.fallback_font, Vector2(37.0, 16.0), "ONLINE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, Color("aebfca"))
+	draw_line(Vector2(98.0, 12.0), Vector2(119.0, 12.0), Color("526575"), 2.0)
+	draw_string(ThemeDB.fallback_font, Vector2(125.0, 16.0), "OFFLINE", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, Color("aebfca"))
+	draw_arc(Vector2(213.0, 12.0), 7.0, 0.0, TAU, 20, Color("f0b45a"), 2.0)
+	draw_string(ThemeDB.fallback_font, Vector2(225.0, 16.0), "SELECTED", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, Color("aebfca"))
 	var seen_edges: Dictionary = {}
 	for site: Dictionary in model.sites:
 		var from_id: StringName = StringName(site["id"])
@@ -41,8 +47,9 @@ func draw_site(site: Dictionary) -> void:
 	var site_id: StringName = StringName(site["id"])
 	var position: Vector2 = diagram_position(site)
 	var gear: Dictionary = model.equipment_at(site_id)
-	var healthy: bool = model.is_site_covered(site_id)
-	var fill: Color = Color("2f7d78") if healthy else Color("5c4650")
+	var connected: bool = model.is_site_covered(site_id)
+	var damaged: bool = model.has_damage(site_id)
+	var fill: Color = Color("8f4f5c") if damaged else Color("2f7d78") if connected else Color("5c4650")
 	draw_circle(position, 17.0, fill)
 	if site_id == selected_site:
 		draw_arc(position, 22.0, 0.0, TAU, 32, Color("f0b45a"), 3.0)
@@ -52,12 +59,14 @@ func draw_site(site: Dictionary) -> void:
 	var sensor: StringName = StringName(gear.get("sensor", &""))
 	if sensor != &"":
 		tag += " %s" % str(sensor).left(1).to_upper()
+		if int(gear.get("sensor_health", 0)) <= 0:
+			tag += "!"
 	var label_offset := Vector2(-45, -24) if site_id == &"ridge" else Vector2(-45, 35)
-	draw_string(ThemeDB.fallback_font, position + label_offset, tag, HORIZONTAL_ALIGNMENT_CENTER, 90.0, 12, Color("eaf1f5"))
+	draw_string(ThemeDB.fallback_font, position + label_offset, tag, HORIZONTAL_ALIGNMENT_CENTER, 90.0, 12, Color("e28a94") if damaged else Color("eaf1f5"))
 
 func diagram_position(site: Dictionary) -> Vector2:
 	var normalized: Vector2 = site.get("position", Vector2.ZERO) as Vector2
-	return Vector2(20.0 + normalized.x * (size.x - 40.0), 14.0 + normalized.y * (size.y - 52.0))
+	return Vector2(20.0 + normalized.x * (size.x - 40.0), 32.0 + normalized.y * (size.y - 70.0))
 
 func _gui_input(event: InputEvent) -> void:
 	if model == null or not (event is InputEventMouseButton):

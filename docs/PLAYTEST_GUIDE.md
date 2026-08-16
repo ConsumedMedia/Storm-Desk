@@ -43,6 +43,8 @@ Target session length: 25–35 minutes.
 - Did network requests feel meaningfully scarce?
 - Was the separation between overnight construction and daily evidence collection clear?
 - Did the next-day outlook provide useful direction without revealing the answer?
+- Did warning markers, network colors/labels, and footer feedback make state changes immediately understandable?
+- Could the player distinguish an effective, partial, late, missed, or incorrect result from the report heading?
 - Was the Day Three time tradeoff understandable before confirming?
 - Did the pre-Day Four outage make repair and alternate routing feel meaningfully different?
 - Did Day Five make prior construction feel useful rather than mandatory?
@@ -62,4 +64,4 @@ Target session length: 25–35 minutes.
 
 ## Validation baseline
 
-As of 2026-08-16, the automated suite passes 72 checks with exit code 0, including the five-day coordinator path, overnight action limits, separate maintenance/observation capacity, forecast opening outage, alternate Farm and Harbor routes, persistent equipment, guided-tour progression, required interactions, skip, and preference persistence. The main scene runs under Godot 4.7.1; GPU captures verify Day Four network recovery, the overnight desk, and the tutorial overlay at 1280×720. The first-week and maintenance milestones are complete; human fun, pacing, comprehension, and balance remain unvalidated until structured playtesting occurs.
+As of 2026-08-16, the automated suite passes 77 checks with exit code 0, including the five-day coordinator path, overnight action limits, separate maintenance/observation capacity, forecast opening outage, alternate routes, warning/protected markers, draft summaries, result assessments, persistent equipment, guided-tour progression, required interactions, skip, and preference persistence. The main scene runs under Godot 4.7.1; five GPU captures verify Day Four network recovery, maintenance, warning selection, daily results, and onboarding at 1280×720. The first-week, maintenance, and interface-feedback milestones are complete; human fun, pacing, comprehension, and balance remain unvalidated until structured playtesting occurs.

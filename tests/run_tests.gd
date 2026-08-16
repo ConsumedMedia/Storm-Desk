@@ -109,8 +109,16 @@ func run_all() -> void:
 	main.call("set_phase", 3)
 	main.call("on_hazard_selected", 1) # Sparkstorm
 	main.call("on_district_toggled", true, &"industrial")
+	var district_buttons: Dictionary = main.get("district_buttons") as Dictionary
+	check((district_buttons[&"industrial"] as Button).text.contains("WARNING"), "Warning selection adds a labeled district-map marker")
+	var warning_summary: Label = main.get("warning_summary_label") as Label
+	check(warning_summary.text.contains("SPARKSTORM") and warning_summary.text.contains("Industrial"), "Warning desk presents a live hazard and district summary")
+	var feedback_label: Label = main.get("action_feedback_label") as Label
+	check(feedback_label.text.contains("Added warning marker"), "Footer provides immediate warning-selection feedback")
 	main.call("confirm_warning")
 	check((main.get("reports") as Array).size() == 1 and int(main.get("day_index")) == 0, "Coordinator resolves Day One and records its report")
+	check(node_contains_text(main.get("modal_layer") as Node, "ASSESSMENT: EFFECTIVE WARNING"), "Daily report opens with a plain-language outcome assessment")
+	check((district_buttons[&"industrial"] as Button).text.contains("PROTECTED"), "Resolved warning leaves a labeled protected-district marker")
 	main.call("open_maintenance")
 	main.call("close_modal")
 	check(int(main.get("phase")) == 8 and int(main.get("maintenance_actions_used")) == 0, "Day One report opens the separate overnight maintenance phase")
@@ -259,6 +267,14 @@ func reading_by_id(readings: Array, id: StringName) -> Dictionary:
 		if StringName(reading.get("id", &"")) == id:
 			return reading
 	return {}
+
+func node_contains_text(node: Node, expected: String) -> bool:
+	if node is Label and (node as Label).text.contains(expected):
+		return true
+	for child: Node in node.get_children():
+		if node_contains_text(child, expected):
+			return true
+	return false
 
 func check(condition: bool, description: String) -> void:
 	checks += 1

@@ -87,3 +87,11 @@ Reason: the five-day campaign made construction strategically relevant, but char
 This supersedes the action-pool portion of “Make network consequences persistent”; equipment damage and manual repair remain persistent, but installations and repairs no longer consume observation capacity.
 
 Alternatives considered: unlimited overnight work, free automatic repairs, retaining all construction during daily Network Planning, or adding a larger between-day economy. Rejected because they would remove scarcity, erase consequences, preserve the clarity problem, or expand scope before balance testing.
+
+## 2026-08-16 — Use labeled state feedback before final art
+
+Decision: improve the placeholder interface with code-drawn atmosphere, phase accents, quality borders, a network legend, damaged-state colors plus text tags, labeled WARNING/PROTECTED/MISSED/FALSE district cards, live warning summaries, persistent footer feedback, outcome assessments, explicit keyboard focus styling, and short Control-property tweens. Keep all visuals replaceable and retain text labels wherever color communicates state.
+
+Reason: the five-day and maintenance systems are mechanically complete, but players need to notice selections, resource spending, connectivity, warning coverage, and outcomes without repeatedly consulting the event log. These changes improve comprehension and tone while preserving the tested simulation.
+
+Alternatives considered: final illustration, downloaded assets, particle-heavy storm scenes, or a UI framework. Deferred or rejected because the prototype still needs balance evidence, must remain dependency-free, and should not lock presentation before the core loop is validated.
