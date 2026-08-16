@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="DistrictDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/district_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"harbor"
+display_name = "Harbor District"
+description = "Airships and harbor crews require preparation time. Highly vulnerable to Cloudbursts; late warnings protect less."
+vulnerability = {&"sparkstorm": 1.0, &"glasswind": 1.1, &"cloudburst": 1.7}
+base_damage = 12
+

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HazardDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/hazard_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"sparkstorm"
+display_name = "Sparkstorm"
+evidence_summary = "Rising electrical charge + falling air pressure + eastward cloud movement"
+threat_summary = "Damages electrical equipment and communications."
+evidence_keys = Array[StringName]([&"charge", &"pressure", &"cloud_motion"])
+

@@ -1,0 +1,46 @@
+# AGENTS.md
+
+## Purpose and phase
+
+This repository contains the playable Storm Desk three-day Godot 4.7.x prototype. Its current purpose is to test whether incomplete fictional weather evidence, scarce observations, network planning, and consequential warnings form an enjoyable 15–20 minute decision loop. The vertical slice is implemented; the next phase is structured playtesting and iteration, not commercial production.
+
+## Implementation rules
+
+- Use typed GDScript and Godot 4.7.x APIs. Do not change engine versions without owner approval.
+- Keep simulation decisions callable independently from UI scenes.
+- Prefer composition, signals or explicit coordinator calls, small focused scripts, deterministic inputs, and data-driven content.
+- Keep hazard and district facts in custom Resources under `resources/`. Add scenario content through `ScenarioCatalog` until a concrete need justifies a different authoring format.
+- Preserve the explicit phase flow in `main_controller.gd`: briefing, observation, network planning, warning decision/confirmation, resolution, daily report, final report.
+- Do not hide action failures. Disable invalid actions and log an explanation when guard code rejects one.
+- Avoid autoloads unless a durable cross-scene need exists and document any added autoload in `docs/ARCHITECTURE.md`.
+
+## Scope restrictions
+
+Do not add multiplayer, networking, accounts, external services, Steamworks, achievements, cloud saves, mod/workshop support, console/mobile work, localization, voice acting, branching narrative, characters, staff hiring, pathfinding, realistic fluid/weather simulation, a map editor, a large technology tree, monetization, DLC, or live-service systems without explicit approval.
+
+## Validation expectations
+
+- Run `godot --headless --path . --script res://tests/run_tests.gd` after simulation or coordinator changes.
+- Confirm the main scene starts without parser/runtime errors.
+- For layout changes, run `tests/capture_ui.gd` with a graphics display and inspect `.godot/ui-capture.png` at 1280×720.
+- Add or adjust deterministic checks for every material calculation or phase transition.
+- Never claim a path works unless it was run. Record anything that could not be validated.
+
+## Placeholder and asset rules
+
+Use Godot Controls, built-in fonts, simple draw calls, ColorRects, panels, polygons, lines, gradients, or particles. Keep placeholders replaceable. Do not download asset packs, imitate artists, add copyrighted media, or present placeholder work as final art.
+
+## Product records
+
+- `docs/CONCEPT.md` defines the intended loop and fictional rules.
+- `docs/ARCHITECTURE.md` describes code and content boundaries.
+- `docs/PROTOTYPE_PLAN.md` is the work/status ledger.
+- `docs/PLAYTEST_GUIDE.md` defines the next evidence to collect.
+- `docs/DECISIONS.md` records material decisions and alternatives.
+
+Update these files when implementation reality changes. Preserve user changes and inspect Git status before editing overlapping work.
+
+## Safety and authority
+
+Never push, publish, purchase, install dependencies/plugins, add external services, change Godot versions, create releases, or perform destructive work without explicit owner authorization. Do not touch `.git`. Keep generated `.godot/` data ignored. Local nondestructive validation is expected.
+

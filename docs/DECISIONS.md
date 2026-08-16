@@ -1,0 +1,48 @@
+# Decision Log
+
+## 2026-08-15 — Keep the runtime dependency-free
+
+Decision: use Godot Resources, typed GDScript, standard Controls, and a dependency-free SceneTree test runner.
+
+Reason: the prototype must be easy for a solo developer new to Godot to open, inspect, and run. No approved need justified plugins or third-party frameworks.
+
+Alternatives considered: a GDScript test addon, external content pipeline, or UI framework. These would add setup cost before the loop is proven.
+
+## 2026-08-15 — Use deterministic authored days
+
+Decision: centralize three fixed scenario records in `ScenarioCatalog` and keep hazards/districts as custom `.tres` Resources.
+
+Reason: reproducibility and legible teaching progression matter more than content scale for this prototype. The data boundary allows a later move to scenario Resources without changing outcome logic.
+
+Alternative considered: procedural generation. Deferred because it would obscure whether failures came from design or generated combinations.
+
+## 2026-08-15 — Pure outcome calculation, stateful coordinator
+
+Decision: keep hazard scoring and outcome/economy calculations in independent scripts; let `main_controller.gd` own phase and presentation state.
+
+Reason: important math is testable without UI scenes while the prototype retains a simple runtime composition.
+
+Alternative considered: a large autoload game manager. Rejected because only one scene currently needs session state.
+
+## 2026-08-15 — Make warning time an action threshold
+
+Decision: each network request consumes capacity; on Day Three, more than one request makes the warning late. Timely correct warnings reduce 75% of damage and late correct warnings reduce 40%.
+
+Reason: this creates an explicit confidence-versus-preparation tradeoff with a calculation players can understand.
+
+Alternative considered: a real-time countdown. Rejected because reading speed should not be punished in this deduction prototype.
+
+## 2026-08-15 — Use a structured district board as the placeholder map
+
+Decision: represent the region with labeled district cards and vulnerability detail rather than coordinates or pathfinding.
+
+Reason: the acceptance question concerns evidence, prioritization, and warnings. The board communicates all decision-relevant spatial entities without introducing a map editor or movement simulation.
+
+Alternative considered: a freeform 2D island map with relay edges. Deferred until playtests show stronger spatial routing is the next valuable experiment.
+
+## 2026-08-15 — Explain every consequence
+
+Decision: reports expose the actual pattern, faulty Day Three evidence, raw/reduced district damage, trust changes, and the full budget equation.
+
+Reason: a player must never lose to an arbitrary hidden answer, and explainable outcomes are necessary to evaluate whether the rules are learnable.
+

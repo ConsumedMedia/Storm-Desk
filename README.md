@@ -1,0 +1,73 @@
+# Storm Desk
+
+Storm Desk is a playable three-day Godot prototype about operating a weather bureau for floating islands. Each day asks the player to interpret fictional weather evidence, decide whether limited sensor requests are worth their budget and warning-time cost, classify the hazard, and warn selected districts. The result explains the true evidence and every trust, budget, and damage change.
+
+## Requirements and launch
+
+- Godot 4.7.x (implemented and validated with 4.7.1 stable)
+- GL Compatibility renderer
+- 1280×720 reference resolution; window scaling uses `canvas_items`
+
+Open the repository-root `project.godot` in Godot and press F6/F5, or run from a terminal:
+
+```text
+godot --path .
+```
+
+No dependencies, plugins, asset downloads, autoloads, or external services are required.
+
+## How to play
+
+1. Read the morning briefing and open Rules / Help for the three learnable hazard patterns.
+2. Select district map cards to review vulnerabilities.
+3. Inspect each instrument value and its quality tag.
+4. Continue to Network Planning. Remote requests cost budget and observation capacity. Later days prevent buying every reading.
+5. Continue to the Warning Desk. Choose a hazard (or stand down), severity, and districts.
+6. Review and confirm the warning. Choices can be changed until confirmation.
+7. Read the calculation-backed daily report, then continue.
+8. After Day Three, review the final report or restart without closing the application.
+
+Mouse and keyboard focus navigation are supported by standard Godot Controls. The interface does not rely on color alone: phases, qualities, disabled actions, and warnings are labeled in text.
+
+## Current prototype scope
+
+- Day One: complete Sparkstorm teaching loop with all essential evidence
+- Day Two: Glasswind scenario with one request available from two network options
+- Day Three: Cloudburst scenario with a faulty charge reading, two requests available from three options, and a warning-time tradeoff
+- Three distinct data-driven districts and hazards
+- Correct, false, missed, exaggerated, underestimated, timely, and late warning outcomes
+- Trust, budget, damage, vulnerability, observation, warning-operation, and repair calculations
+- Daily evidence explanations, calculation breakdowns, final summary, and in-app restart
+- Local placeholder interface made only from Godot Controls and built-in fonts
+
+Out of scope: multiplayer, networking, accounts, Steam integration, saves, achievements, final art, realistic fluid simulation, characters, staff systems, localization, and external services.
+
+## Validation
+
+Run the repository-native checks without installing a test framework:
+
+```text
+godot --headless --path . --script res://tests/run_tests.gd
+```
+
+The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, invalid network actions, all three coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-15 passed 28 checks with exit code 0 under Godot 4.7.1.
+
+`tests/capture_ui.gd` is a visual-QA helper. Run it with a graphics display (not `--headless`); it saves an ignored capture to `.godot/ui-capture.png`.
+
+## Repository structure
+
+- `scenes/main/` — launch scene
+- `scripts/ui/` — state-driven interface coordinator
+- `scripts/simulation/` — resource types, deterministic content catalog, evaluator, and outcome calculation
+- `resources/hazards/` and `resources/districts/` — editable `.tres` content
+- `tests/` — dependency-free checks and capture helper
+- `docs/` — concept, architecture, plan, playtest guide, and decision log
+
+## Known limitations
+
+- The prototype uses three fixed scenarios and has no save/load.
+- Scenario records are centralized in typed GDScript dictionaries; hazards and districts are standalone custom Resources.
+- The map is a structured district board rather than spatial simulation.
+- The UI is tuned for a 1280×720 reference window; very small windows are not a target.
+- Audio, animation, final art, accessibility narration, and localization are deferred.
+

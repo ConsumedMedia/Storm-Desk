@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="DistrictDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/district_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"farmland"
+display_name = "Farmland District"
+description = "Crop terraces need early preparation. Highly vulnerable to Glasswind; moderately vulnerable to other hazards."
+vulnerability = {&"sparkstorm": 1.0, &"glasswind": 1.6, &"cloudburst": 1.1}
+base_damage = 12
+

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HazardDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/hazard_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"cloudburst"
+display_name = "Cloudburst"
+evidence_summary = "High moisture + slow-moving dense clouds + rising condensation"
+threat_summary = "Floods low-altitude districts and disrupts harbors."
+evidence_keys = Array[StringName]([&"moisture", &"cloud_motion", &"condensation"])
+
