@@ -77,3 +77,13 @@ Decision: retain the three established hazard rules and add two deterministic au
 Reason: three days introduced construction and damage but ended before repair and redundancy could influence later decisions. A contained five-day arc gives persistent infrastructure time to produce consequences without adding procedural generation, a separate maintenance economy, or new production systems.
 
 Alternatives considered: add new hazard types, procedural weeks, or a between-day maintenance phase immediately. Deferred because authored reuse keeps the fictional rules learnable and lets playtests determine whether a separate planning phase is necessary.
+
+## 2026-08-16 — Separate overnight infrastructure from daily observations
+
+Decision: after Days One through Four, show a broad next-day outlook and allow one optional installation or repair. Charge its budget cost immediately, but do not consume the following day's observation capacity or affect warning lateness. Daily Network Planning is limited to connected-reading collection and surveys. Apply a forecast opening outage when its preceding maintenance desk opens so the player can react before that day begins.
+
+Reason: the five-day campaign made construction strategically relevant, but charging installation, repair, and evidence collection against one daily pool compressed infrastructure planning into the forecast itself. A one-action overnight phase gives persistent network choices a readable home while retaining budget scarcity and requiring a daily action to collect actual evidence.
+
+This supersedes the action-pool portion of “Make network consequences persistent”; equipment damage and manual repair remain persistent, but installations and repairs no longer consume observation capacity.
+
+Alternatives considered: unlimited overnight work, free automatic repairs, retaining all construction during daily Network Planning, or adding a larger between-day economy. Rejected because they would remove scarcity, erase consequences, preserve the clarity problem, or expand scope before balance testing.

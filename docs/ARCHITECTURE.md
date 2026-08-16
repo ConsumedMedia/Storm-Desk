@@ -4,7 +4,7 @@
 
 `scenes/main/main.tscn` is a minimal full-window Control root. `scripts/ui/main_controller.gd` creates the container-based interface and coordinates the session. There are no autoloads.
 
-The coordinator owns transient session state: day index, explicit phase enum, budget, trust, observation usage/spend, current readings, warning choices, accumulated reports, and one persistent `NetworkModel`. Modal panels provide briefing, help, confirmation, daily results, and the final report. It exposes named tutorial targets and emits phase/interaction signals, but does not own tour sequencing. Standard Godot controls provide focus and disabled-state behavior.
+The coordinator owns transient session state: day index, explicit phase enum, budget, trust, observation usage/spend, nightly maintenance usage, applied opening-event days, current readings, warning choices, accumulated reports, and one persistent `NetworkModel`. Modal panels provide briefing, help, confirmation, daily results, next-day outlooks, and the final report. It exposes named tutorial targets and emits phase/interaction signals, but does not own tour sequencing. Standard Godot controls provide focus and disabled-state behavior.
 
 ## State flow
 
@@ -18,15 +18,16 @@ The phase enum is explicit:
 6. Storm Resolution
 7. Daily Report
 8. Final Report
+9. Overnight Maintenance
 
-`set_phase()` is the single presentation transition point. It updates the phase label, required next action, active panel, and continue-button state. Warning choices remain editable until confirmation. Result and final-report callbacks advance the deterministic session or call `restart_session()`.
+Overnight Maintenance was appended to preserve the existing tutorial-facing phase identifiers, but it occurs after Daily Report on Days One through Four; Day Five proceeds directly to Final Report. `set_phase()` is the single presentation transition point. It updates the phase label, required next action, active panel, footer note, and continue-button state. Warning choices remain editable until confirmation.
 
 ## Simulation boundary
 
 - `hazard_definition.gd` and `district_definition.gd` define typed custom Resource schemas.
 - `resources/hazards/*.tres` contains names, evidence patterns, and threats.
 - `resources/districts/*.tres` contains descriptions, base damage, and per-hazard vulnerability multipliers.
-- `scenario_catalog.gd` is deterministic content data for the five-day first week. Scenario dictionaries contain briefing copy, ground truth, readings with quality metadata, network actions, capacity, safe-action timing limits, evidence explanations, and optional authored opening damage.
+- `scenario_catalog.gd` is deterministic content data for the five-day first week. Scenario dictionaries contain briefing and outlook copy, ground truth, readings with quality metadata, network actions, capacity, safe-action timing limits, evidence explanations, and optional authored opening damage.
 - `network_model.gd` owns five fixed sites, graph edges, relay reachability, sensor/relay slots, equipment health, installation, alternate routing, repairs, authored opening outages, and persistent hazard damage. Bureau HQ and healthy connected relays form the traversal graph; a sensor is available when its site touches that graph.
 - `network_diagram.gd` is a replaceable Control view of `NetworkModel`. It draws labeled nodes and edges, accepts site selection, and never owns simulation truth.
 - `tutorial_controller.gd` owns the 12-step onboarding sequence, host-signal gating, skip/completion state, and one `ConfigFile` preference at `user://settings.cfg`. It resolves targets through the main controller's `tutorial_target()` callable, so no step contains screen coordinates.
@@ -42,15 +43,15 @@ For each threatened district, raw damage is:
 
 A correct timely warning reduces 75%; a correct late warning reduces 40%. Underestimating severity reduces protection to 70% of that reduction. Useful warnings gain trust; late warnings gain less. Misses, false warnings, wrong classifications, and severity errors lose trust.
 
-Each day adds an allocation of 8, then subtracts observation spend, two budget per warned district, and `ceil(total damage / 5)` repairs. Observation costs are deducted at purchase time in the coordinator; the post-result application avoids charging them twice.
+Each day adds an allocation of 8, then subtracts observation spend, two budget per warned district, and `ceil(total damage / 5)` repairs. Observation costs are deducted at purchase time in the coordinator; the post-result application avoids charging them twice. Maintenance costs are also deducted immediately, remain outside the completed day's calculation, and never affect daily observation use or warning lateness.
 
 ## Network model
 
 The starter network contains Bureau HQ, a healthy High Ridge relay, and an Industrial electrical sensor. Farm Spire, Industrial Mast, Harbor Buoy, and High Ridge are fixed construction sites. Each non-HQ site has an independent relay slot and sensor slot. An Industrial relay creates alternate paths to both Farm Spire and Harbor when High Ridge is unavailable. Sensor types are electrical, crystal, and moisture.
 
-Installations, repairs, collections, and scenario surveys each consume one observation-capacity unit and their displayed budget cost. Newly installed sensors immediately deliver a relevant reading when connected. Relay installation or repair synchronizes newly reachable sensors, avoiding order-dependent dead ends. Equipment state persists across days; restart restores only the starter network.
+Each overnight phase permits at most one installation or repair at its displayed budget cost. It does not consume the following day's capacity, and new sensors do not deliver forecast evidence until the player spends a daily action to collect connected readings. During Network Planning, only collection and scenario surveys consume observation capacity and influence warning timing. Equipment state persists across days; restart restores only the starter network.
 
-Missed protection has infrastructure consequences: Sparkstorms can damage the Industrial sensor, Glasswind can damage High Ridge, and Cloudbursts can damage Harbor equipment. Day Four also applies one clearly briefed authored High Ridge outage through `NetworkModel.apply_opening_damage()`. Correct timely warnings to the relevant district protect hazard-exposed equipment. The daily calculation report records any damage, and the final report lists the remaining network.
+Missed protection has infrastructure consequences: Sparkstorms can damage the Industrial sensor, Glasswind can damage High Ridge, and Cloudbursts can damage Harbor equipment. Day Four's clearly forecast High Ridge outage is applied once when the preceding maintenance desk opens, with `load_day()` as a fallback for direct/test transitions. Correct timely warnings to the relevant district protect hazard-exposed equipment. The daily calculation report records hazard damage, the event log records maintenance spending, and the final report lists the remaining network.
 
 ## Adding content
 
@@ -58,4 +59,4 @@ Add hazard and district definitions as `.tres` files and register their paths in
 
 ## Tests
 
-`tests/run_tests.gd` is a dependency-free SceneTree test runner. Its 62 checks cover simulation calculations, deterministic ordering, graph connectivity, installation, alternate routes, authored and hazard-driven outages, repair, persistent equipment, network-driven evidence, invalid-action guards, tutorial progression/required actions/skip/persistence, all five coordinator-driven day resolutions, final report, and restart. `tests/capture_ui.gd` renders a graphics-backed 1280×720 Day Four recovery capture. `tests/capture_tutorial.gd` renders the first guided-tour step. Both save ignored output and assert critical viewport bounds.
+`tests/run_tests.gd` is a dependency-free SceneTree test runner. Its 72 checks cover simulation calculations, deterministic ordering, graph connectivity, nightly installation limits, separate action pools, alternate routes, authored and hazard-driven outages, repair, persistent equipment, network-driven evidence, invalid-action guards, tutorial progression/required actions/skip/persistence, all five coordinator-driven day resolutions, final report, and restart. Graphics-backed 1280×720 helpers capture Day Four recovery, the first overnight maintenance desk, and the guided-tour opening. All save ignored output and assert critical viewport bounds.

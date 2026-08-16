@@ -40,7 +40,7 @@ func build_steps() -> Array[Dictionary]:
 		{"target": &"help", "title": "Weather Rules", "body": "Rules / Help contains the three fictional evidence patterns. You can also replay this guided tour from there.", "mode": &"info"},
 		{"target": &"event_log", "title": "Operations Log", "body": "The log confirms selections, network actions, rejected actions, and newly delivered readings.", "mode": &"info"},
 		{"target": &"continue", "title": "Advance the Phase", "body": "Use the primary footer button when you have finished the current phase. Move into Network Planning now.", "mode": &"phase", "phase": 2},
-		{"target": &"network", "title": "Plan the Network", "body": "Select fixed sites, inspect relay paths, and install, repair, collect, or survey. Every action shows its budget cost and consumes capacity.", "mode": &"info"},
+		{"target": &"network", "title": "Plan the Network", "body": "During a forecast day, inspect relay paths, collect connected readings, or commission surveys here. Installations and repairs happen during overnight maintenance after each report.", "mode": &"info"},
 		{"target": &"continue", "title": "Decide When to Stop", "body": "More evidence can improve confidence, but later actions can delay warnings. Proceed when the evidence is sufficient.", "mode": &"phase", "phase": 3},
 		{"target": &"hazard", "title": "Classify the Hazard", "body": "Choose the fictional hazard supported by the evidence, or explicitly stand down with no warning.", "mode": &"hazard"},
 		{"target": &"severity", "title": "Declare Severity", "body": "Severity affects whether protection matches the actual threat. Exaggeration and underestimation both have consequences.", "mode": &"info"},

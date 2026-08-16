@@ -1,6 +1,6 @@
 # Prototype Plan
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 ## Completed
 
@@ -16,16 +16,16 @@ Last updated: 2026-08-15
 - Added an optional 12-step guided tour with live target cutouts, input masking, phase-aware action requirements, persistent completion/skip preference, and Rules/Help replay.
 - Expanded the campaign into a five-day first week: Day Four opens with a High Ridge outage and repair-versus-reroute choice; Day Five makes prior routes affect a severe final forecast.
 - Added an Industrial alternate path to both Farm Spire and Harbor, authored opening damage through `NetworkModel`, dynamic five-day reporting, and first-week performance thresholds.
-- Expanded to 62 dependency-free automated checks plus graphics-backed 1280×720 Day Four network-planning and tutorial regression captures.
+- Added a dedicated overnight maintenance phase after Days One through Four with next-day outlooks, one separate install-or-repair action, maintenance-first opening outages, and daily collection/survey capacity.
+- Expanded to 72 dependency-free automated checks plus graphics-backed 1280×720 Day Four, maintenance, and tutorial regression captures.
 - Added actual implementation documentation.
 
 ## Current work
 
-The contained first-week milestone is complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
+The contained first-week and between-day maintenance milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
 
 ## Remaining milestones
 
-- Add between-day network planning only if the daily capacity model proves too restrictive for readable construction decisions.
 - Conduct at least five observed playtests using `PLAYTEST_GUIDE.md`.
 - Decide whether evidence language, network costs, and warning-time pressure produce meaningful uncertainty.
 

@@ -5,7 +5,7 @@ signal district_inspected
 signal hazard_selection_made
 signal district_warning_changed
 
-enum Phase { MORNING_BRIEFING, OBSERVATION, NETWORK_PLANNING, WARNING_DECISION, WARNING_CONFIRMATION, STORM_RESOLUTION, DAILY_REPORT, FINAL_REPORT }
+enum Phase { MORNING_BRIEFING, OBSERVATION, NETWORK_PLANNING, WARNING_DECISION, WARNING_CONFIRMATION, STORM_RESOLUTION, DAILY_REPORT, FINAL_REPORT, MAINTENANCE }
 
 const COLOR_BG := Color("101925")
 const COLOR_PANEL := Color("1a2a3a")
@@ -14,6 +14,7 @@ const COLOR_ACCENT := Color("55c2b5")
 const COLOR_WARNING := Color("f0b45a")
 const COLOR_TEXT := Color("eaf1f5")
 const COLOR_MUTED := Color("aebfca")
+const MAINTENANCE_ACTION_LIMIT := 1
 
 var hazards: Array[HazardDefinition] = []
 var districts: Array[DistrictDefinition] = []
@@ -32,6 +33,8 @@ var selected_severity: int = 2
 var warned_districts: Array[StringName] = []
 var reports: Array[Dictionary] = []
 var tutorial_controller: TutorialController
+var maintenance_actions_used: int = 0
+var opening_damage_applied_days: Array[int] = []
 
 var header_panel: PanelContainer
 var status_panel: PanelContainer
@@ -53,6 +56,7 @@ var selected_network_site: StringName = &"ridge"
 var district_detail: Label
 var event_log: TextEdit
 var continue_button: Button
+var footer_note: Label
 var help_button: Button
 var hazard_option: OptionButton
 var severity_option: OptionButton
@@ -144,9 +148,9 @@ func build_interface() -> void:
 
 	var footer := HBoxContainer.new()
 	page.add_child(footer)
-	var change_note := make_label("Choices remain editable until you confirm a warning.", 14, COLOR_MUTED)
-	change_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(change_note)
+	footer_note = make_label("Choices remain editable until you confirm a warning.", 14, COLOR_MUTED)
+	footer_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(footer_note)
 	continue_button = make_button("Continue")
 	continue_button.custom_minimum_size = Vector2(240, 44)
 	continue_button.pressed.connect(on_continue_pressed)
@@ -263,6 +267,8 @@ func restart_session() -> void:
 	selected_network_site = &"ridge"
 	network_model.reset()
 	reports.clear()
+	maintenance_actions_used = 0
+	opening_damage_applied_days.clear()
 	event_log.text = ""
 	load_day()
 
@@ -282,9 +288,7 @@ func load_day() -> void:
 		check.set_pressed_no_signal(false)
 	on_hazard_selected(0)
 	log_event("Day %d opened: %s" % [int(scenario["day"]), str(scenario["title"])])
-	var opening_damage: Array = scenario.get("opening_damage", []) as Array
-	for event: String in network_model.apply_opening_damage(opening_damage):
-		log_event(event)
+	apply_scenario_opening_damage(scenario)
 	set_phase(Phase.MORNING_BRIEFING)
 	show_modal(
 		"MORNING BRIEFING — DAY %d" % int(scenario["day"]),
@@ -316,6 +320,7 @@ func set_phase(next_phase: Phase) -> void:
 		Phase.STORM_RESOLUTION: "STORM RESOLUTION",
 		Phase.DAILY_REPORT: "DAILY REPORT",
 		Phase.FINAL_REPORT: "FINAL REPORT",
+		Phase.MAINTENANCE: "OVERNIGHT MAINTENANCE",
 	}
 	phase_label.text = "PHASE  /  %s" % str(phase_names[phase])
 	match phase:
@@ -341,24 +346,47 @@ func set_phase(next_phase: Phase) -> void:
 		Phase.STORM_RESOLUTION:
 			instruction_label.text = "The actual weather is being resolved."
 			continue_button.disabled = true
+		Phase.MAINTENANCE:
+			instruction_label.text = "Optional: install or repair once, then begin the next forecast day."
+			continue_button.text = "Begin Day %d" % (day_index + 2)
+			continue_button.disabled = false
 		_:
 			continue_button.disabled = true
 	network_scroll.visible = phase != Phase.WARNING_DECISION and phase != Phase.WARNING_CONFIRMATION
 	warning_box.visible = phase == Phase.WARNING_DECISION or phase == Phase.WARNING_CONFIRMATION
+	footer_note.text = "One optional overnight action; continue whenever ready." if phase == Phase.MAINTENANCE else "Choices remain editable until you confirm a warning."
 	refresh_all()
 	phase_changed.emit(int(phase))
 
 func refresh_all() -> void:
-	day_label.text = "DAY %d / %d" % [int(scenario.get("day", 1)), scenarios.size()]
+	if phase == Phase.MAINTENANCE:
+		day_label.text = "NIGHT %d → DAY %d" % [day_index + 1, day_index + 2]
+	else:
+		day_label.text = "DAY %d / %d" % [int(scenario.get("day", 1)), scenarios.size()]
 	budget_label.text = "BUDGET %d" % budget
 	trust_label.text = "TRUST %d" % trust
-	var capacity: int = int(scenario.get("capacity", 0))
-	capacity_label.text = "CAPACITY %d / %d" % [maxi(0, capacity - observations_used), capacity]
+	if phase == Phase.MAINTENANCE:
+		capacity_label.text = "MAINT %d / %d" % [maxi(0, MAINTENANCE_ACTION_LIMIT - maintenance_actions_used), MAINTENANCE_ACTION_LIMIT]
+	else:
+		var capacity: int = int(scenario.get("capacity", 0))
+		capacity_label.text = "CAPACITY %d / %d" % [maxi(0, capacity - observations_used), capacity]
 	refresh_readings()
 	refresh_network_actions()
 
 func refresh_readings() -> void:
 	clear_children(reading_box)
+	if phase == Phase.MAINTENANCE:
+		var next_scenario: Dictionary = scenarios[day_index + 1]
+		var outlook_panel := PanelContainer.new()
+		outlook_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL_ALT, 5))
+		var outlook_box := VBoxContainer.new()
+		outlook_box.add_theme_constant_override("separation", 10)
+		outlook_panel.add_child(outlook_box)
+		outlook_box.add_child(make_label("DAY %d OUTLOOK" % int(next_scenario["day"]), 14, COLOR_WARNING))
+		outlook_box.add_child(make_wrapped_label(str(next_scenario.get("outlook", "No outlook is available.")), 17, COLOR_TEXT))
+		outlook_box.add_child(make_wrapped_label("The outlook identifies operational risks, not the correct hazard or warning.", 14, COLOR_MUTED))
+		reading_box.add_child(outlook_panel)
+		return
 	for reading: Dictionary in readings:
 		if not bool(reading.get("visible", false)):
 			continue
@@ -393,32 +421,40 @@ func refresh_network_actions() -> void:
 	if phase == Phase.OBSERVATION:
 		network_box.add_child(make_wrapped_label("Network controls unlock after the initial instrument review.", 15, COLOR_MUTED))
 		return
+	if phase == Phase.MAINTENANCE:
+		var no_maintenance_capacity: bool = maintenance_actions_used >= MAINTENANCE_ACTION_LIMIT
+		var equipment_selector := OptionButton.new()
+		equipment_selector.add_item("Relay — cost 5")
+		equipment_selector.set_item_metadata(0, &"relay")
+		for sensor_type: StringName in [&"electrical", &"crystal", &"moisture"]:
+			equipment_selector.add_item("%s — cost 4" % str(NetworkModel.SENSOR_LABELS[sensor_type]))
+			equipment_selector.set_item_metadata(equipment_selector.item_count - 1, sensor_type)
+		network_box.add_child(equipment_selector)
+		var install_button := make_button("Install selected equipment")
+		install_button.disabled = no_maintenance_capacity or selected_network_site == &"hq" or budget < 4
+		install_button.pressed.connect(install_network_equipment.bind(equipment_selector))
+		network_box.add_child(install_button)
+		var repair_button := make_button("Repair selected site — cost 3")
+		repair_button.disabled = no_maintenance_capacity or not network_model.has_damage(selected_network_site) or budget < 3
+		repair_button.pressed.connect(repair_selected_site)
+		network_box.add_child(repair_button)
+		network_box.add_child(make_wrapped_label("OVERNIGHT WORK: one installation or repair. Tomorrow's capacity and warning timing are unaffected.", 14, COLOR_MUTED))
+		if no_maintenance_capacity:
+			network_box.add_child(make_wrapped_label("MAINTENANCE COMPLETE — begin the next day when ready.", 14, COLOR_WARNING))
+		return
+	if phase != Phase.NETWORK_PLANNING:
+		return
 	var capacity: int = int(scenario.get("capacity", 0))
 	var no_capacity: bool = observations_used >= capacity
-	var equipment_selector := OptionButton.new()
-	equipment_selector.add_item("Relay — cost 5")
-	equipment_selector.set_item_metadata(0, &"relay")
-	for sensor_type: StringName in [&"electrical", &"crystal", &"moisture"]:
-		equipment_selector.add_item("%s — cost 4" % str(NetworkModel.SENSOR_LABELS[sensor_type]))
-		equipment_selector.set_item_metadata(equipment_selector.item_count - 1, sensor_type)
-	network_box.add_child(equipment_selector)
-	var install_button := make_button("Install selected equipment")
-	install_button.disabled = phase != Phase.NETWORK_PLANNING or no_capacity or selected_network_site == &"hq" or budget < 4
-	install_button.pressed.connect(install_network_equipment.bind(equipment_selector))
-	network_box.add_child(install_button)
-	var repair_button := make_button("Repair selected site — cost 3")
-	repair_button.disabled = phase != Phase.NETWORK_PLANNING or no_capacity or not network_model.has_damage(selected_network_site) or budget < 3
-	repair_button.pressed.connect(repair_selected_site)
-	network_box.add_child(repair_button)
 	var collect_button := make_button("Collect connected readings — cost 1")
-	collect_button.disabled = phase != Phase.NETWORK_PLANNING or no_capacity or not has_collectable_network_reading() or budget < 1
+	collect_button.disabled = no_capacity or not has_collectable_network_reading() or budget < 1
 	collect_button.pressed.connect(collect_connected_readings)
 	network_box.add_child(collect_button)
 	var actions: Array = scenario.get("actions", []) as Array
 	if actions.is_empty() and capacity == 0:
 		network_box.add_child(make_wrapped_label("No remote request is needed today. All essential evidence is already available.", 15, COLOR_MUTED))
 		return
-	network_box.add_child(make_wrapped_label("Each installation, repair, collection, or survey uses 1 capacity and delays warning preparation.", 15, COLOR_MUTED))
+	network_box.add_child(make_wrapped_label("Each collection or survey uses 1 daily capacity and delays warning preparation. Installations and repairs happen during overnight maintenance.", 15, COLOR_MUTED))
 	for action: Dictionary in actions:
 		var button := make_button("%s  —  cost %d" % [str(action["label"]), int(action["cost"])])
 		var required_relay: StringName = StringName(action.get("requires_relay", &""))
@@ -439,7 +475,7 @@ func select_network_site(site_id: StringName) -> void:
 	refresh_network_actions()
 
 func install_network_equipment(selector: OptionButton) -> void:
-	if not can_take_network_action():
+	if not can_take_maintenance_action():
 		return
 	var equipment_type: StringName = StringName(selector.get_item_metadata(selector.selected))
 	var cost: int = 5 if equipment_type == &"relay" else 4
@@ -454,17 +490,15 @@ func install_network_equipment(selector: OptionButton) -> void:
 	if not error_message.is_empty():
 		log_event("Installation rejected: %s" % error_message)
 		return
-	consume_network_action(cost)
+	consume_maintenance_action(cost)
 	if equipment_type == &"relay":
 		log_event("Installed a relay at %s." % network_model.site_label(selected_network_site))
-		reveal_network_readings()
 	else:
 		log_event("Installed a %s at %s." % [NetworkModel.SENSOR_LABELS[equipment_type], network_model.site_label(selected_network_site)])
-		reveal_network_readings(selected_network_site, equipment_type)
 	refresh_all()
 
 func repair_selected_site() -> void:
-	if not can_take_network_action():
+	if not can_take_maintenance_action():
 		return
 	if budget < 3:
 		log_event("Repair rejected: insufficient budget (cost 3).")
@@ -473,9 +507,8 @@ func repair_selected_site() -> void:
 	if repair_message.begins_with("No damaged") or repair_message.begins_with("Unknown"):
 		log_event("Repair rejected: %s" % repair_message)
 		return
-	consume_network_action(3)
+	consume_maintenance_action(3)
 	log_event(repair_message)
-	reveal_network_readings()
 	refresh_all()
 
 func collect_connected_readings() -> void:
@@ -501,9 +534,22 @@ func can_take_network_action() -> bool:
 		return false
 	return true
 
+func can_take_maintenance_action() -> bool:
+	if phase != Phase.MAINTENANCE:
+		log_event("Infrastructure action rejected: installations and repairs are only available during overnight maintenance.")
+		return false
+	if maintenance_actions_used >= MAINTENANCE_ACTION_LIMIT:
+		log_event("Infrastructure action rejected: this night's maintenance action is already spent.")
+		return false
+	return true
+
 func consume_network_action(cost: int) -> void:
 	observations_used += 1
 	observation_spend += cost
+	budget -= cost
+
+func consume_maintenance_action(cost: int) -> void:
+	maintenance_actions_used += 1
 	budget -= cost
 
 func has_collectable_network_reading() -> bool:
@@ -572,6 +618,8 @@ func on_continue_pressed() -> void:
 			set_phase(Phase.WARNING_DECISION)
 		Phase.WARNING_DECISION:
 			show_warning_confirmation()
+		Phase.MAINTENANCE:
+			advance_day()
 
 func show_warning_confirmation() -> void:
 	set_phase(Phase.WARNING_CONFIRMATION)
@@ -613,7 +661,28 @@ func show_daily_report(result: Dictionary) -> void:
 	var body: String = "ACTUAL WEATHER: %s — Level %d\n%s\n\n%s\n\n" % [actual.display_name, int(scenario["severity"]), str(scenario["outcome_note"]), "WARNING TIMING: LATE" if bool(result["late"]) else "WARNING TIMING: TIMELY"]
 	body += "Damage: %d   Protected: %d   Missed: %d   False warnings: %d\nTrust: %+d → %d   Budget: %+d → %d\n\nCALCULATION\n• %s" % [int(result["damage"]), int(result["protected"]), int(result["missed"]), int(result["false_warnings"]), int(result["trust_delta"]), trust, int(result["budget_delta"]), budget, "\n• ".join(result["lines"])]
 	var final_day: bool = day_index >= scenarios.size() - 1
-	show_modal("DAY %d REPORT" % int(scenario["day"]), body, "View final report" if final_day else "Continue to next day", show_final_report if final_day else advance_day)
+	show_modal("DAY %d REPORT" % int(scenario["day"]), body, "View final report" if final_day else "Review overnight network", show_final_report if final_day else open_maintenance)
+
+func open_maintenance() -> void:
+	if day_index >= scenarios.size() - 1:
+		show_final_report()
+		return
+	maintenance_actions_used = 0
+	var next_scenario: Dictionary = scenarios[day_index + 1]
+	log_event("Overnight maintenance opened before Day %d." % int(next_scenario["day"]))
+	apply_scenario_opening_damage(next_scenario)
+	set_phase(Phase.MAINTENANCE)
+	var body: String = "%s\n\nYou may install or repair one piece of network equipment tonight. The budget cost is immediate, but this work does not use tomorrow's observation capacity or make its warning late. You may also continue without acting.\n\nCURRENT NETWORK\n%s" % [str(next_scenario.get("outlook", "No outlook is available.")), network_model.summary()]
+	show_modal("OVERNIGHT OUTLOOK — DAY %d" % int(next_scenario["day"]), body, "Open maintenance desk", func() -> void: pass)
+
+func apply_scenario_opening_damage(target_scenario: Dictionary) -> void:
+	var target_day: int = int(target_scenario.get("day", 0))
+	if opening_damage_applied_days.has(target_day):
+		return
+	opening_damage_applied_days.append(target_day)
+	var opening_damage: Array = target_scenario.get("opening_damage", []) as Array
+	for event: String in network_model.apply_opening_damage(opening_damage):
+		log_event(event)
 
 func advance_day() -> void:
 	day_index += 1
@@ -666,7 +735,7 @@ func show_help() -> void:
 	var lines: Array[String] = []
 	for hazard: HazardDefinition in hazards:
 		lines.append("%s\nEvidence: %s\nThreat: %s" % [hazard.display_name, hazard.evidence_summary, hazard.threat_summary])
-	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nNETWORK\nSelect fixed sites on the diagram. HQ and healthy connected relays create a transmission path. Each site has one relay slot and one sensor slot. Installations, repairs, collections, and surveys cost budget and capacity; equipment persists between days and can be damaged by an unprotected hazard. R / R! marks healthy or damaged relays; E, C, and M mark sensor types.\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution. Each briefing states the day's capacity and whether taking a second action will make the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage.\n\nReplay Guided Tour resets to Day One when necessary; it does not preserve the current run." % "\n\n".join(lines)
+	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nNETWORK\nSelect fixed sites on the diagram. HQ and healthy connected relays create a transmission path. Each site has one relay slot and one sensor slot. Overnight maintenance allows one installation or repair without using the next day's observation capacity. Daily Network Planning is for connected-reading collection and surveys; those actions can delay warning preparation. Equipment persists between days and can be damaged by a hazard or a briefed outage. R / R! marks healthy or damaged relays; E, C, and M mark sensor types.\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution → Overnight Maintenance. Each briefing states the day's capacity and whether taking a second observation will make the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage.\n\nReplay Guided Tour resets to Day One when necessary; it does not preserve the current run." % "\n\n".join(lines)
 	show_modal("RULES / HELP", body, "Close", func() -> void: pass, "Replay guided tour", replay_guided_tour)
 
 func replay_guided_tour() -> void:

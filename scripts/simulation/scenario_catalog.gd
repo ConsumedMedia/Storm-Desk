@@ -52,8 +52,9 @@ static func day_two() -> Dictionary:
 	return {
 		"day": 2,
 		"title": "A Missing Crystal Trace",
-		"briefing": "The Farm Spire has an empty sensor slot. You have capacity for only one installation or survey. Two districts lie along the projected wind corridor, but their vulnerabilities differ.",
-		"tutorial": "Network day: a Crystal Sensor at Farm Spire can fill the missing reading through the High Ridge relay. A wind-history survey is the alternative; you cannot do both.",
+		"outlook": "Dry, unstable air is approaching Farm Spire. Crystal and wind coverage may be useful, but the exact hazard remains uncertain.",
+		"briefing": "The overnight maintenance window has closed. If you installed a Crystal Sensor at Farm Spire, today's single action can collect its reading; otherwise the High Ridge wind-history survey remains available. Two districts lie along the projected corridor.",
+		"tutorial": "Collection day: use the prepared Farm Spire sensor or choose the wind-history survey. Daily capacity permits only one evidence action.",
 		"hazard": &"glasswind",
 		"severity": 2,
 		"threatened": [&"farmland", &"harbor"],
@@ -74,8 +75,9 @@ static func day_three() -> Dictionary:
 	return {
 		"day": 3,
 		"title": "Noise Over Deepwater",
-		"briefing": "A dense bank has stalled over the eastern basin. One desk instrument is producing a suspicious signal. Network state persists from prior days; capacity allows two actions, and the second makes any warning late.",
-		"tutorial": "Conflicting day: install or collect from connected sensors, repair damage if necessary, and balance confidence against preparation time. The result will identify faulty evidence.",
+		"outlook": "A dense bank is gathering over the eastern basin. Harbor moisture coverage and a reliable eastern transmission path may be useful.",
+		"briefing": "A dense bank has stalled over the eastern basin. One desk instrument is producing a suspicious signal. Prepared network equipment persists from prior nights; capacity allows two evidence actions, and the second makes any warning late.",
+		"tutorial": "Conflicting day: collect from connected sensors or commission a survey, then balance confidence against preparation time. The result will identify faulty evidence.",
 		"hazard": &"cloudburst",
 		"severity": 3,
 		"threatened": [&"harbor", &"farmland"],
@@ -98,8 +100,9 @@ static func day_four() -> Dictionary:
 	return {
 		"day": 4,
 		"title": "The Broken Ridge",
-		"briefing": "Overnight crystal shear disabled the High Ridge relay. Farm Spire is cut off unless you repair the ridge or establish the Industrial alternate route. Capacity allows two actions, but only one preserves a timely warning.",
-		"tutorial": "Recovery day: restore a route for the Farm Spire crystal sensor, or dispatch a ground sampler and leave the network damage for later. The falling-pressure signal is marked suspect.",
+		"outlook": "Crystal shear may disrupt High Ridge overnight while unstable air approaches Farm Spire. Repair readiness or a redundant route may matter.",
+		"briefing": "Overnight crystal shear disabled the High Ridge relay before today's maintenance decision. Farm Spire can report only if you repaired the ridge or established the Industrial alternate route. Capacity allows two evidence actions, but only one preserves a timely warning.",
+		"tutorial": "Recovery consequence: collect through the route prepared overnight, or dispatch a ground sampler and leave network work for the next maintenance window. The falling-pressure signal is marked suspect.",
 		"hazard": &"glasswind",
 		"severity": 2,
 		"threatened": [&"farmland"],
@@ -129,6 +132,7 @@ static func day_five() -> Dictionary:
 	return {
 		"day": 5,
 		"title": "The Week's Last Wall",
+		"outlook": "A severe front is approaching Harbor and Industrial. Moisture coverage and a redundant eastern route may matter for the final forecast.",
 		"briefing": "A severe front is pressing into the eastern basin. Harbor and Industrial crews both need an accurate call. Your week-long network choices now determine which corroborating routes are available; a second action will make the warning late.",
 		"tutorial": "Final day: use a connected Harbor moisture sensor, the repaired High Ridge route, or an Industrial alternate route. Seek enough confidence without sacrificing preparation time.",
 		"hazard": &"cloudburst",

@@ -12,18 +12,20 @@ Target session length: 25–35 minutes.
 2. For a first-time session, record whether the player starts or skips the guided tour and whether each highlighted action is understood without facilitator help.
 3. Observe whether they inspect district vulnerabilities before warning.
 4. On Day One, note whether the complete Sparkstorm pattern is understood without intervention.
-5. On Day Two, ask why they selected one network request over the other.
-6. On Day Three, note whether they recognize the charge conflict and whether they accept a late warning for more confidence.
-7. On Day Four, ask whether they repair High Ridge, build the Industrial alternate route, or ignore the outage, and record why.
-8. On Day Five, note whether they recognize how the accumulated network changes their available evidence routes.
-9. After each report, ask the player to explain why trust, budget, and damage changed before they continue.
-10. At the final report, ask them to restart and verify that the session returns to Day One without automatically replaying a completed tour.
+5. After Day One, record whether the outlook leads them to install a Farm sensor, and whether they understand that evidence still requires collection on Day Two.
+6. At every overnight desk, note whether the player acts, skips, or tries to take a second maintenance action.
+7. On Day Three, note whether they recognize the charge conflict and whether they accept a late warning for more confidence.
+8. Before Day Four, ask whether they repair High Ridge, build the Industrial alternate route, or defer the outage, and record why.
+9. On Day Five, note whether they recognize how accumulated maintenance changes their available evidence routes.
+10. After each report, ask the player to explain why trust, budget, and damage changed before they continue.
+11. At the final report, ask them to restart and verify that the session returns to Day One without automatically replaying a completed tour.
 
 ## Observation sheet
 
 - Completion time:
 - Help opened and when:
 - Day One choice and reasoning:
+- Overnight actions/skips and outlook interpretation:
 - Day Two request, warning, and reasoning:
 - Day Three requests, warning timing, and reasoning:
 - Day Four recovery/reroute choice and reasoning:
@@ -39,18 +41,20 @@ Target session length: 25–35 minutes.
 - Which evidence felt most trustworthy, and why?
 - Did the hazard rules feel learnable or like guessing?
 - Did network requests feel meaningfully scarce?
+- Was the separation between overnight construction and daily evidence collection clear?
+- Did the next-day outlook provide useful direction without revealing the answer?
 - Was the Day Three time tradeoff understandable before confirming?
-- Did the Day Four outage make repair and alternate routing feel meaningfully different?
+- Did the pre-Day Four outage make repair and alternate routing feel meaningfully different?
 - Did Day Five make prior construction feel useful rather than mandatory?
 - Did district vulnerabilities affect who you warned?
 - Were trust and budget consequences fair and legible?
-- Would you want a fourth day? What new decision should it add?
+- Would you want a second week? What new decision should it add?
 
 ## Success criteria
 
 - Most first-time players finish in 25–35 minutes without facilitator correction.
 - At least 80% correctly identify Day One from the complete evidence.
-- Players can articulate the Day Two observation tradeoff, Day Three confidence-versus-time tradeoff, and Day Four repair-versus-reroute choice.
+- Players can articulate the overnight maintenance limit, Day Two collection tradeoff, Day Three confidence-versus-time tradeoff, and pre-Day Four repair-versus-reroute choice.
 - Players can identify at least one way their network state changed the Day Five evidence options.
 - Players understand why they lost or gained trust and budget after reading each report.
 - At least half of players make a materially different resource or warning choice from another participant.
@@ -58,4 +62,4 @@ Target session length: 25–35 minutes.
 
 ## Validation baseline
 
-As of 2026-08-15, the automated suite passes 62 checks with exit code 0, including the five-day coordinator path, opening outage, alternate Farm and Harbor routes, persistent equipment, guided-tour progression, required interactions, skip, and preference persistence. The main scene runs under Godot 4.7.1; GPU captures verify Day Four network recovery and the tutorial overlay at 1280×720. The contained first-week milestone is complete; human fun, pacing, comprehension, and balance remain unvalidated until structured playtesting occurs.
+As of 2026-08-16, the automated suite passes 72 checks with exit code 0, including the five-day coordinator path, overnight action limits, separate maintenance/observation capacity, forecast opening outage, alternate Farm and Harbor routes, persistent equipment, guided-tour progression, required interactions, skip, and preference persistence. The main scene runs under Godot 4.7.1; GPU captures verify Day Four network recovery, the overnight desk, and the tutorial overlay at 1280×720. The first-week and maintenance milestones are complete; human fun, pacing, comprehension, and balance remain unvalidated until structured playtesting occurs.

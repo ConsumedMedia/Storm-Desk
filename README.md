@@ -22,11 +22,11 @@ No dependencies, plugins, asset downloads, autoloads, or external services are r
 2. On the first run, start or skip the guided tour. It highlights the current focus area and requires the relevant interface action before advancing.
 3. Select district map cards to review vulnerabilities.
 4. Inspect each instrument value and its quality tag.
-5. Continue to Network Planning. Select fixed sites on the diagram, install or repair equipment, collect connected readings, or commission a relay survey. Every action costs budget and observation capacity.
+5. Continue to Network Planning. Collect readings from connected sensors or commission a relay survey. These actions cost budget and observation capacity.
 6. Continue to the Warning Desk. Choose a hazard (or stand down), severity, and districts.
 7. Review and confirm the warning. Choices can be changed until confirmation.
-8. Read the calculation-backed daily report, then continue.
-9. After Day Five, review the first-week report or restart without closing the application.
+8. After Days One through Four, review the next-day outlook and optionally install or repair one piece of equipment during overnight maintenance. This costs budget but not observation capacity.
+9. Begin the next briefing. After Day Five, review the first-week report or restart without closing the application.
 
 Mouse and keyboard focus navigation are supported by standard Godot Controls. The interface does not rely on color alone: phases, qualities, disabled actions, and warnings are labeled in text.
 
@@ -41,6 +41,7 @@ Mouse and keyboard focus navigation are supported by standard Godot Controls. Th
 - Persistent five-site sensor/relay graph with fixed build locations, selectable nodes, one relay and one sensor slot per remote site, alternate routing, and labeled connection state
 - Electrical, crystal, and moisture sensor installation; relay installation; connected reading collection; damaged-equipment repair
 - Network equipment that persists between days and can be damaged by unprotected Sparkstorm, Glasswind, or Cloudburst outcomes
+- A dedicated overnight maintenance phase with a broad next-day outlook and one optional installation or repair separate from daily observation capacity
 - A 12-step, state-aware guided tour with dimmed input masking, labeled highlights, required district/phase/warning interactions, persistent skip/completion state, and replay from Rules/Help
 - Correct, false, missed, exaggerated, underestimated, timely, and late warning outcomes
 - Trust, budget, damage, vulnerability, observation, warning-operation, and repair calculations
@@ -57,9 +58,9 @@ Run the repository-native checks without installing a test framework:
 godot --headless --path . --script res://tests/run_tests.gd
 ```
 
-The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, opening outages, repairs, persistent hazard damage, network-driven evidence, guided-tour progression, required interactions, skip, local completion preference, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-15 passed 62 checks with exit code 0 under Godot 4.7.1.
+The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, opening outages, overnight action limits, repairs, separate maintenance and observation capacity, persistent hazard damage, network-driven evidence, guided-tour progression, required interactions, skip, local completion preference, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-16 passed 72 checks with exit code 0 under Godot 4.7.1.
 
-`tests/capture_ui.gd` and `tests/capture_tutorial.gd` are visual-QA helpers. Run them with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical UI bounds. The main UI capture uses the dense Day Four recovery screen.
+`tests/capture_ui.gd`, `tests/capture_maintenance.gd`, and `tests/capture_tutorial.gd` are visual-QA helpers. Run them with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical UI bounds. They cover the dense Day Four recovery screen, the first overnight desk, and guided onboarding.
 
 ## Repository structure
 

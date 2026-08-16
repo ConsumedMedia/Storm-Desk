@@ -12,7 +12,7 @@ This repository contains the playable Storm Desk five-day Godot 4.7.x prototype.
 - Preserve the fixed-node scope unless the owner explicitly approves free placement, terrain routing, or a map editor.
 - Prefer composition, signals or explicit coordinator calls, small focused scripts, deterministic inputs, and data-driven content.
 - Keep hazard and district facts in custom Resources under `resources/`. Add scenario content through `ScenarioCatalog` until a concrete need justifies a different authoring format.
-- Preserve the explicit phase flow in `main_controller.gd`: briefing, observation, network planning, warning decision/confirmation, resolution, daily report, final report.
+- Preserve the explicit phase flow in `main_controller.gd`: briefing, observation, network planning, warning decision/confirmation, resolution, daily report, overnight maintenance between days, final report.
 - Keep guided-tour sequence/persistence in `TutorialController` and mask/highlight rendering in `TutorialOverlay`. Add target controls through `tutorial_target()` instead of screen coordinates.
 - Tutorial steps must never choose an answer, spend resources, or silently alter simulation state. Required gameplay actions must advance through host signals.
 - Do not hide action failures. Disable invalid actions and log an explanation when guard code rejects one.
@@ -26,7 +26,7 @@ Do not add multiplayer, networking, accounts, external services, Steamworks, ach
 
 - Run `godot --headless --path . --script res://tests/run_tests.gd` after simulation or coordinator changes.
 - Confirm the main scene starts without parser/runtime errors.
-- For layout changes, run `tests/capture_ui.gd` with a graphics display and inspect `.godot/ui-capture.png` at 1280×720.
+- For layout changes, run the relevant graphics helpers (`tests/capture_ui.gd`, `tests/capture_maintenance.gd`, or `tests/capture_tutorial.gd`) and inspect their `.godot/*.png` output at 1280×720.
 - Add or adjust deterministic checks for every material calculation or phase transition.
 - Never claim a path works unless it was run. Record anything that could not be validated.
 
