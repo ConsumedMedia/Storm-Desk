@@ -10,7 +10,11 @@ The player operates a small weather bureau serving three inhabited floating-isla
 
 Briefing → inspect local readings → decide whether to spend on remote observations → classify the hazard and severity → choose districts → confirm → resolve → understand the calculation.
 
-The core tension is confidence versus cost and time. Day One teaches a complete pattern. Day Two withholds one essential reading and restricts observation capacity. Day Three adds plausible faulty evidence and makes a second request late.
+The core tension is confidence versus cost and time. Day One teaches a complete pattern. Day Two withholds one essential reading and introduces construction on the persistent fixed-site sensor/relay graph. Day Three adds plausible faulty evidence, carries prior equipment and damage forward, and makes a second network action late.
+
+## Network planning
+
+The bureau begins with HQ, one High Ridge relay, and an Industrial electrical sensor. Fixed field sites can hold a relay and one specialized sensor. Healthy relays create transmission paths; redundant routes can keep sites online after storm damage. Installation, repair, collection, and surveys compete for the same limited daily capacity, so infrastructure and evidence gathering are part of one decision rather than a separate economic minigame.
 
 ## Fictional hazards
 
@@ -25,4 +29,3 @@ The core tension is confidence versus cost and time. Day One teaches a complete 
 - Harbor: most vulnerable to Cloudbursts and suffers from late preparation.
 
 No individual citizens are simulated. District state exists only at the level needed to calculate vulnerability, warning usefulness, damage, trust, and budget.
-

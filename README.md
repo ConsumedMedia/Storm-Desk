@@ -21,7 +21,7 @@ No dependencies, plugins, asset downloads, autoloads, or external services are r
 1. Read the morning briefing and open Rules / Help for the three learnable hazard patterns.
 2. Select district map cards to review vulnerabilities.
 3. Inspect each instrument value and its quality tag.
-4. Continue to Network Planning. Remote requests cost budget and observation capacity. Later days prevent buying every reading.
+4. Continue to Network Planning. Select fixed sites on the diagram, install or repair equipment, collect connected readings, or commission a relay survey. Every action costs budget and observation capacity.
 5. Continue to the Warning Desk. Choose a hazard (or stand down), severity, and districts.
 6. Review and confirm the warning. Choices can be changed until confirmation.
 7. Read the calculation-backed daily report, then continue.
@@ -35,6 +35,9 @@ Mouse and keyboard focus navigation are supported by standard Godot Controls. Th
 - Day Two: Glasswind scenario with one request available from two network options
 - Day Three: Cloudburst scenario with a faulty charge reading, two requests available from three options, and a warning-time tradeoff
 - Three distinct data-driven districts and hazards
+- Persistent five-site sensor/relay graph with fixed build locations, selectable nodes, one relay and one sensor slot per remote site, alternate routing, and labeled connection state
+- Electrical, crystal, and moisture sensor installation; relay installation; connected reading collection; damaged-equipment repair
+- Network equipment that persists between days and can be damaged by unprotected Sparkstorm, Glasswind, or Cloudburst outcomes
 - Correct, false, missed, exaggerated, underestimated, timely, and late warning outcomes
 - Trust, budget, damage, vulnerability, observation, warning-operation, and repair calculations
 - Daily evidence explanations, calculation breakdowns, final summary, and in-app restart
@@ -50,7 +53,7 @@ Run the repository-native checks without installing a test framework:
 godot --headless --path . --script res://tests/run_tests.gd
 ```
 
-The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, invalid network actions, all three coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-15 passed 28 checks with exit code 0 under Godot 4.7.1.
+The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, outages, repairs, persistent hazard damage, network-driven evidence, all three coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-15 passed 38 checks with exit code 0 under Godot 4.7.1.
 
 `tests/capture_ui.gd` is a visual-QA helper. Run it with a graphics display (not `--headless`); it saves an ignored capture to `.godot/ui-capture.png`.
 
@@ -67,7 +70,6 @@ The suite validates hazard evaluation, district vulnerability, warning timing, d
 
 - The prototype uses three fixed scenarios and has no save/load.
 - Scenario records are centralized in typed GDScript dictionaries; hazards and districts are standalone custom Resources.
-- The map is a structured district board rather than spatial simulation.
+- The district map remains a structured board; network construction uses a fixed-node graph rather than free placement or terrain simulation.
 - The UI is tuned for a 1280×720 reference window; very small windows are not a target.
 - Audio, animation, final art, accessibility narration, and localization are deferred.
-

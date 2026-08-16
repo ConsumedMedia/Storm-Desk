@@ -51,6 +51,23 @@ func run_all() -> void:
 	check(str(days) == str(fresh_days), "Scenario catalog is deterministic across loads")
 	check(days.size() == 3 and int(days[0]["day"]) == 1 and int(days[2]["day"]) == 3, "Three fixed scenarios load in order")
 
+	var network := NetworkModel.new()
+	check(network.online_relays().has(&"ridge") and network.is_site_covered(&"harbor"), "Starter High Ridge relay covers downstream sites")
+	check(network.has_online_sensor(&"industrial", &"electrical"), "Starter Industrial electrical sensor has an HQ path")
+	check(network.install_sensor(&"farmland", &"crystal").is_empty() and network.has_online_sensor(&"farmland", &"crystal"), "Installed Farm Spire sensor becomes available through the relay graph")
+	network.damage_relay(&"ridge")
+	check(not network.has_online_sensor(&"farmland", &"crystal"), "Damaged relay disconnects its downstream sensor")
+	check(not network.repair_site(&"ridge").is_empty() and network.has_online_sensor(&"farmland", &"crystal"), "Relay repair restores downstream readings")
+	var alternate_network := NetworkModel.new()
+	alternate_network.install_relay(&"industrial")
+	alternate_network.install_sensor(&"harbor", &"moisture")
+	alternate_network.damage_relay(&"ridge")
+	check(alternate_network.has_online_sensor(&"harbor", &"moisture"), "Industrial relay provides an alternate Harbor route")
+	var exposed_network := NetworkModel.new()
+	var no_warnings: Array[StringName] = []
+	var network_damage: Array[String] = exposed_network.resolve_hazard(&"glasswind", &"sparkstorm", no_warnings, false)
+	check(not network_damage.is_empty() and not exposed_network.online_relays().has(&"ridge"), "Unprotected Glasswind damage persists on High Ridge")
+
 	var day_two_warned: Array[StringName] = [&"farmland", &"harbor"]
 	var optimal_two: Dictionary = OutcomeCalculator.calculate(days[1], districts, &"glasswind", 2, day_two_warned, 1, 4)
 	check(int(optimal_two["protected"]) == 2 and bool(optimal_two["correct_hazard"]), "Day Two can resolve with two protected districts")
@@ -73,9 +90,13 @@ func run_all() -> void:
 	check((main.get("reports") as Array).size() == 1 and int(main.get("day_index")) == 0, "Coordinator resolves Day One and records its report")
 	main.call("advance_day")
 	main.call("set_phase", 2)
-	var day_two_action: Dictionary = ((main.get("scenario") as Dictionary)["actions"] as Array)[0]
-	main.call("request_observation", day_two_action)
-	check(int(main.get("observations_used")) == 1, "Day Two coordinator reveals one paid network observation")
+	main.call("select_network_site", &"farmland")
+	var crystal_selector := OptionButton.new()
+	crystal_selector.add_item("Crystal Sensor")
+	crystal_selector.set_item_metadata(0, &"crystal")
+	main.call("install_network_equipment", crystal_selector)
+	check(int(main.get("observations_used")) == 1, "Day Two coordinator spends capacity installing a sensor")
+	check(str(reading_by_id(main.get("readings") as Array, &"crystal").get("quality", "missing")) == "clear", "Connected Crystal Sensor reveals the missing Day Two evidence")
 	main.call("set_phase", 3)
 	main.call("on_hazard_selected", 2) # Glasswind
 	main.call("on_district_toggled", true, &"farmland")
@@ -83,6 +104,8 @@ func run_all() -> void:
 	main.call("confirm_warning")
 	check((main.get("reports") as Array).size() == 2 and int(main.get("day_index")) == 1, "Coordinator resolves Day Two and records its report")
 	main.call("advance_day")
+	var session_network: NetworkModel = main.get("network_model") as NetworkModel
+	check(session_network.has_online_sensor(&"farmland", &"crystal"), "Constructed sensor persists into Day Three")
 	main.call("set_phase", 2)
 	var day_three_action: Dictionary = ((main.get("scenario") as Dictionary)["actions"] as Array)[0]
 	main.call("request_observation", day_three_action)
@@ -98,6 +121,7 @@ func run_all() -> void:
 	main.set("trust", 2)
 	main.call("restart_session")
 	check(int(main.get("budget")) == 30 and int(main.get("trust")) == 50 and int(main.get("day_index")) == 0, "Restart resets the session without restarting the application")
+	check(StringName((main.get("network_model") as NetworkModel).equipment_at(&"farmland").get("sensor", &"")) == &"", "Restart resets persistent network construction")
 	main.queue_free()
 
 	if failures == 0:
@@ -112,6 +136,12 @@ func district_by_id(districts: Array[DistrictDefinition], id: StringName) -> Dis
 		if district.id == id:
 			return district
 	return districts[0]
+
+func reading_by_id(readings: Array, id: StringName) -> Dictionary:
+	for reading: Dictionary in readings:
+		if StringName(reading.get("id", &"")) == id:
+			return reading
+	return {}
 
 func check(condition: bool, description: String) -> void:
 	checks += 1

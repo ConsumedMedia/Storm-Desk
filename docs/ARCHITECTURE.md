@@ -4,7 +4,7 @@
 
 `scenes/main/main.tscn` is a minimal full-window Control root. `scripts/ui/main_controller.gd` creates the container-based interface and coordinates the session. There are no autoloads.
 
-The coordinator owns transient session state: day index, explicit phase enum, budget, trust, observation usage/spend, current readings, warning choices, and accumulated reports. Modal panels provide briefing, help, confirmation, daily results, and the final report. Standard Godot controls provide focus and disabled-state behavior.
+The coordinator owns transient session state: day index, explicit phase enum, budget, trust, observation usage/spend, current readings, warning choices, accumulated reports, and one persistent `NetworkModel`. Modal panels provide briefing, help, confirmation, daily results, and the final report. Standard Godot controls provide focus and disabled-state behavior.
 
 ## State flow
 
@@ -27,6 +27,8 @@ The phase enum is explicit:
 - `resources/hazards/*.tres` contains names, evidence patterns, and threats.
 - `resources/districts/*.tres` contains descriptions, base damage, and per-hazard vulnerability multipliers.
 - `scenario_catalog.gd` is deterministic content data for the three prototype days. Scenario dictionaries contain briefing copy, ground truth, readings with quality metadata, network actions, capacity, safe-action timing limits, and evidence explanations.
+- `network_model.gd` owns five fixed sites, graph edges, relay reachability, sensor/relay slots, equipment health, installation, alternate routing, repairs, and persistent hazard damage. Bureau HQ and healthy connected relays form the traversal graph; a sensor is available when its site touches that graph.
+- `network_diagram.gd` is a replaceable Control view of `NetworkModel`. It draws labeled nodes and edges, accepts site selection, and never owns simulation truth.
 - `hazard_evaluator.gd` scores visible evidence independently of the UI. Imprecise evidence carries half weight; faulty evidence initially appears plausible until contradicted.
 - `outcome_calculator.gd` is a pure calculation boundary for threat coverage, timing, severity, damage, trust, and budget.
 
@@ -40,11 +42,18 @@ A correct timely warning reduces 75%; a correct late warning reduces 40%. Undere
 
 Each day adds an allocation of 8, then subtracts observation spend, two budget per warned district, and `ceil(total damage / 5)` repairs. Observation costs are deducted at purchase time in the coordinator; the post-result application avoids charging them twice.
 
+## Network model
+
+The starter network contains Bureau HQ, a healthy High Ridge relay, and an Industrial electrical sensor. Farm Spire, Industrial Mast, Harbor Buoy, and High Ridge are fixed construction sites. Each non-HQ site has an independent relay slot and sensor slot. Sensor types are electrical, crystal, and moisture.
+
+Installations, repairs, collections, and scenario surveys each consume one observation-capacity unit and their displayed budget cost. Newly installed sensors immediately deliver a relevant reading when connected. Relay installation or repair synchronizes newly reachable sensors, avoiding order-dependent dead ends. Equipment state persists across days; restart restores only the starter network.
+
+Missed protection has infrastructure consequences: Sparkstorms can damage the Industrial sensor, Glasswind can damage High Ridge, and Cloudbursts can damage Harbor equipment. Correct timely warnings to the relevant district protect that equipment. The daily calculation report records any damage, and the final report lists the remaining network.
+
 ## Adding content
 
 Add hazard and district definitions as `.tres` files and register their paths in `ScenarioCatalog`. For a new fixed prototype day, add a deterministic scenario function with quality-tagged readings and explicit reveal actions. If scenario volume grows beyond this prototype, migrate scenario records to custom Resources while preserving the evaluator/calculator input boundary.
 
 ## Tests
 
-`tests/run_tests.gd` is a dependency-free SceneTree test runner. It covers simulation calculations, deterministic ordering, invalid-action guards, all three coordinator-driven day resolutions, final report, and restart. `tests/capture_ui.gd` renders a graphics-backed 1280×720 UI capture into ignored `.godot/` output.
-
+`tests/run_tests.gd` is a dependency-free SceneTree test runner. It covers simulation calculations, deterministic ordering, graph connectivity, installation, alternate routes, relay outages and repair, persistent hazard damage, network-driven evidence, invalid-action guards, all three coordinator-driven day resolutions, final report, and restart. `tests/capture_ui.gd` renders a graphics-backed 1280×720 Day Two network-planning capture into ignored `.godot/` output and asserts that the footer and network desk remain inside the viewport.

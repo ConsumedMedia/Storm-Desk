@@ -52,8 +52,8 @@ static func day_two() -> Dictionary:
 	return {
 		"day": 2,
 		"title": "A Missing Crystal Trace",
-		"briefing": "The southern sensor mast is intermittent. You have capacity for only one network request. Two districts lie along the projected wind corridor, but their vulnerabilities differ.",
-		"tutorial": "Incomplete day: gather the reading that best separates Glasswind from other hazards. You cannot request both available observations.",
+		"briefing": "The Farm Spire has an empty sensor slot. You have capacity for only one installation or survey. Two districts lie along the projected wind corridor, but their vulnerabilities differ.",
+		"tutorial": "Network day: a Crystal Sensor at Farm Spire can fill the missing reading through the High Ridge relay. A wind-history survey is the alternative; you cannot do both.",
 		"hazard": &"glasswind",
 		"severity": 2,
 		"threatened": [&"farmland", &"harbor"],
@@ -62,11 +62,10 @@ static func day_two() -> Dictionary:
 		"readings": [
 			reading(&"wind_shift", "Vane Array", "Wind direction: RAPIDLY SHIFTING", "clear", &"glasswind", true, false),
 			reading(&"humidity", "Hygrometer", "Humidity: LOW", "clear", &"glasswind", true, false),
-			reading(&"crystal", "Crystal Spectrometer", "Crystal density: UNAVAILABLE", "missing", &"glasswind", true, false),
+			network_reading(&"crystal", "Crystal Spectrometer", "Crystal density: UNAVAILABLE", &"glasswind", &"crystal", &"farmland", "Crystal density: HIGH", "clear"),
 		],
 		"actions": [
-			{"id": &"crystal_scan", "label": "Query crystal sensor", "cost": 4, "reveals": &"crystal", "value": "Crystal density: HIGH", "quality": "clear", "log": "Remote crystal sensor reports a high atmospheric crystal count."},
-			{"id": &"wind_history", "label": "Route wind-history relay", "cost": 3, "reveals": &"history", "value": "Wind history: shifts accelerating", "quality": "clear", "supports": &"glasswind", "log": "The relay confirms that wind shifts are accelerating."},
+			{"id": &"wind_history", "label": "Route wind-history survey", "cost": 3, "requires_relay": &"ridge", "reveals": &"history", "value": "Wind history: shifts accelerating", "quality": "clear", "supports": &"glasswind", "log": "The High Ridge relay confirms that wind shifts are accelerating."},
 		],
 		"outcome_note": "Rapid wind shifts, high crystal density, and low humidity identify Glasswind. Farmland is highly vulnerable; Harbor is moderately exposed.",
 	}
@@ -75,8 +74,8 @@ static func day_three() -> Dictionary:
 	return {
 		"day": 3,
 		"title": "Noise Over Deepwater",
-		"briefing": "A dense bank has stalled over the eastern basin. One desk instrument is producing a suspicious signal. Three network requests are available, but capacity allows only two—and the second request makes any warning late.",
-		"tutorial": "Conflicting day: seek corroboration, but balance confidence against preparation time. The result will identify faulty evidence.",
+		"briefing": "A dense bank has stalled over the eastern basin. One desk instrument is producing a suspicious signal. Network state persists from prior days; capacity allows two actions, and the second makes any warning late.",
+		"tutorial": "Conflicting day: install or collect from connected sensors, repair damage if necessary, and balance confidence against preparation time. The result will identify faulty evidence.",
 		"hazard": &"cloudburst",
 		"severity": 3,
 		"threatened": [&"harbor", &"farmland"],
@@ -86,15 +85,29 @@ static func day_three() -> Dictionary:
 			reading(&"moisture", "Hygrometer", "Moisture: HIGH", "clear", &"cloudburst", true, false),
 			reading(&"cloud_motion", "Cloudscope", "Clouds: DENSE and SLOW-MOVING", "clear", &"cloudburst", true, false),
 			reading(&"charge", "Aethermeter", "Electrical charge: RISING", "faulty", &"sparkstorm", true, true),
-			reading(&"condensation", "Reservoir Gauge", "Condensation: UNAVAILABLE", "missing", &"cloudburst", true, false),
+			network_reading(&"condensation", "Reservoir Gauge", "Condensation: UNAVAILABLE", &"cloudburst", &"moisture", &"harbor", "Condensation: RISING FAST", "clear"),
+			network_reading(&"charge_check", "Backup Charge Mast", "Backup charge mast: NOT POLLED", &"cloudburst", &"electrical", &"industrial", "Backup charge mast: NORMAL", "clear"),
 		],
 		"actions": [
-			{"id": &"reservoir", "label": "Query reservoir gauge", "cost": 4, "reveals": &"condensation", "value": "Condensation: RISING FAST", "quality": "clear", "log": "The remote reservoir gauge confirms rapidly rising condensation."},
-			{"id": &"charge_check", "label": "Cross-check charge mast", "cost": 3, "reveals": &"charge_check", "value": "Backup charge mast: NORMAL", "quality": "clear", "supports": &"cloudburst", "log": "The backup mast contradicts the desk aethermeter; the charge signal is likely faulty."},
-			{"id": &"altitude", "label": "Survey cloud altitude", "cost": 3, "reveals": &"altitude", "value": "Cloud base: LOW over eastern basin", "quality": "imprecise", "supports": &"cloudburst", "log": "The relay gives an imprecise but concerning low cloud-base estimate."},
+			{"id": &"altitude", "label": "Relay cloud-altitude survey", "cost": 3, "requires_relay": &"ridge", "reveals": &"altitude", "value": "Cloud base: LOW over eastern basin", "quality": "imprecise", "supports": &"cloudburst", "log": "The High Ridge relay gives an imprecise but concerning low cloud-base estimate."},
 		],
 		"outcome_note": "High moisture, slow dense clouds, and rising condensation form the Cloudburst pattern. The rising-charge reading was faulty; the backup mast remained normal.",
 	}
 
 static func reading(id: StringName, instrument: String, value: String, quality: String, supports: StringName, visible: bool, faulty: bool) -> Dictionary:
 	return {"id": id, "instrument": instrument, "value": value, "quality": quality, "supports": supports, "visible": visible, "faulty": faulty}
+
+static func network_reading(id: StringName, instrument: String, unavailable_value: String, supports: StringName, sensor_type: StringName, site_id: StringName, network_value: String, network_quality: String) -> Dictionary:
+	return {
+		"id": id,
+		"instrument": instrument,
+		"value": unavailable_value,
+		"quality": "missing",
+		"supports": supports,
+		"visible": true,
+		"faulty": false,
+		"network_sensor": sensor_type,
+		"network_site": site_id,
+		"network_value": network_value,
+		"network_quality": network_quality,
+	}

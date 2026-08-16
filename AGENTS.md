@@ -8,6 +8,8 @@ This repository contains the playable Storm Desk three-day Godot 4.7.x prototype
 
 - Use typed GDScript and Godot 4.7.x APIs. Do not change engine versions without owner approval.
 - Keep simulation decisions callable independently from UI scenes.
+- Keep network topology, connectivity, equipment health, and hazard damage in `NetworkModel`; the UI diagram must present that state rather than duplicate it.
+- Preserve the fixed-node scope unless the owner explicitly approves free placement, terrain routing, or a map editor.
 - Prefer composition, signals or explicit coordinator calls, small focused scripts, deterministic inputs, and data-driven content.
 - Keep hazard and district facts in custom Resources under `resources/`. Add scenario content through `ScenarioCatalog` until a concrete need justifies a different authoring format.
 - Preserve the explicit phase flow in `main_controller.gd`: briefing, observation, network planning, warning decision/confirmation, resolution, daily report, final report.
@@ -43,4 +45,3 @@ Update these files when implementation reality changes. Preserve user changes an
 ## Safety and authority
 
 Never push, publish, purchase, install dependencies/plugins, add external services, change Godot versions, create releases, or perform destructive work without explicit owner authorization. Do not touch `.git`. Keep generated `.godot/` data ignored. Local nondestructive validation is expected.
-

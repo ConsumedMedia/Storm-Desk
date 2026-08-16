@@ -46,3 +46,18 @@ Decision: reports expose the actual pattern, faulty Day Three evidence, raw/redu
 
 Reason: a player must never lose to an arbitrary hidden answer, and explainable outcomes are necessary to evaluate whether the rules are learnable.
 
+## 2026-08-15 — Build network foundations as a fixed graph
+
+Decision: add five authored sites, explicit graph edges, independent relay and sensor slots, persistent equipment health, and diagram-based selection. Keep terrain routing and free placement deferred.
+
+Reason: the observation buttons proved the deduction flow but did not test the intended building/network-planning component. A fixed graph adds meaningful connectivity, redundancy, costs, and damage while remaining explainable and feasible for the prototype.
+
+Alternatives considered: freeform placement, grid routing, and a full map editor. Deferred because their interface and path-validation costs would expand scope before fixed-node planning is proven.
+
+## 2026-08-15 — Make network consequences persistent
+
+Decision: correct timely warnings protect relevant network equipment; missed or late protection can damage the Industrial sensor, High Ridge relay, or Harbor sensor. Repairs and alternate relay routes consume the same limited daily action capacity as observations.
+
+Reason: construction choices need consequences across days, and repair-versus-evidence decisions reinforce the existing confidence/time/budget loop.
+
+Alternative considered: automatic between-day repairs. Rejected because it would remove the primary reason for persistent network state.

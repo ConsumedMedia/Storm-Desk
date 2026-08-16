@@ -10,8 +10,10 @@ func _process(_delta: float) -> bool:
 	frame_count += 1
 	if frame_count == 2:
 		var main: Node = root.get_child(0)
+		main.call("advance_day")
 		main.call("close_modal")
 		main.call("set_phase", 2)
+		main.call("select_network_site", &"farmland")
 		main.call("show_district", load("res://resources/districts/harbor.tres"))
 	if frame_count < 10:
 		return false

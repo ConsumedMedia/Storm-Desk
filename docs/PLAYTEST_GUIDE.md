@@ -50,5 +50,4 @@ Target session length: 15–20 minutes.
 
 ## Validation baseline
 
-As of 2026-08-15, the automated suite passes 28 checks with exit code 0, the main scene runs under Godot 4.7.1, and GPU captures confirm the briefing, Observation, and Warning Decision layouts at 1280×720. Human fun, pacing, and comprehension remain unvalidated until playtests occur.
-
+As of 2026-08-15, the automated suite passes 38 checks with exit code 0, including fixed-node connectivity, installation, alternate routing, relay damage/repair, persistent equipment, and network-driven readings. The main scene runs under Godot 4.7.1, and the GPU capture verifies the Day Two network-planning layout at 1280×720. By owner decision, structured external playtesting is deferred until after the next contained development milestone; human fun, pacing, and comprehension therefore remain unvalidated.

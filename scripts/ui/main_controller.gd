@@ -13,6 +13,7 @@ const COLOR_MUTED := Color("aebfca")
 var hazards: Array[HazardDefinition] = []
 var districts: Array[DistrictDefinition] = []
 var scenarios: Array[Dictionary] = []
+var network_model: NetworkModel
 var scenario: Dictionary = {}
 var readings: Array[Dictionary] = []
 var day_index: int = 0
@@ -33,8 +34,10 @@ var trust_label: Label
 var capacity_label: Label
 var instruction_label: Label
 var reading_box: VBoxContainer
+var network_scroll: ScrollContainer
 var network_box: VBoxContainer
 var warning_box: VBoxContainer
+var selected_network_site: StringName = &"ridge"
 var district_detail: Label
 var event_log: TextEdit
 var continue_button: Button
@@ -47,6 +50,7 @@ func _ready() -> void:
 	hazards = ScenarioCatalog.hazards()
 	districts = ScenarioCatalog.districts()
 	scenarios = ScenarioCatalog.days()
+	network_model = NetworkModel.new()
 	build_interface()
 	restart_session()
 
@@ -188,10 +192,15 @@ func build_actions_panel() -> Control:
 	var box := VBoxContainer.new()
 	panel.add_child(box)
 	box.add_child(make_label("NETWORK / WARNING DESK", 20, COLOR_ACCENT))
+	network_scroll = ScrollContainer.new()
+	network_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	network_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(network_scroll)
 	network_box = VBoxContainer.new()
+	network_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	network_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	network_box.add_theme_constant_override("separation", 8)
-	box.add_child(network_box)
+	network_scroll.add_child(network_box)
 	warning_box = VBoxContainer.new()
 	warning_box.visible = false
 	warning_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -232,6 +241,8 @@ func restart_session() -> void:
 	budget = 30
 	trust = 50
 	day_index = 0
+	selected_network_site = &"ridge"
+	network_model.reset()
 	reports.clear()
 	event_log.text = ""
 	load_day()
@@ -298,7 +309,7 @@ func set_phase(next_phase: Phase) -> void:
 			continue_button.disabled = true
 		_:
 			continue_button.disabled = true
-	network_box.visible = phase != Phase.WARNING_DECISION and phase != Phase.WARNING_CONFIRMATION
+	network_scroll.visible = phase != Phase.WARNING_DECISION and phase != Phase.WARNING_CONFIRMATION
 	warning_box.visible = phase == Phase.WARNING_DECISION or phase == Phase.WARNING_CONFIRMATION
 	refresh_all()
 
@@ -330,24 +341,162 @@ func refresh_readings() -> void:
 
 func refresh_network_actions() -> void:
 	clear_children(network_box)
+	var diagram := NetworkDiagram.new()
+	diagram.set_model(network_model)
+	diagram.set_selected_site(selected_network_site)
+	diagram.site_selected.connect(select_network_site)
+	network_box.add_child(diagram)
+	var site_selector := OptionButton.new()
+	for site: Dictionary in network_model.sites:
+		site_selector.add_item(str(site["label"]))
+		site_selector.set_item_metadata(site_selector.item_count - 1, site["id"])
+		if StringName(site["id"]) == selected_network_site:
+			site_selector.select(site_selector.item_count - 1)
+	site_selector.item_selected.connect(func(index: int) -> void: select_network_site(StringName(site_selector.get_item_metadata(index))))
+	network_box.add_child(site_selector)
+	network_box.add_child(make_wrapped_label(network_model.status_text(selected_network_site), 14, COLOR_MUTED))
 	if phase == Phase.OBSERVATION:
 		network_box.add_child(make_wrapped_label("Network controls unlock after the initial instrument review.", 15, COLOR_MUTED))
 		return
+	var capacity: int = int(scenario.get("capacity", 0))
+	var no_capacity: bool = observations_used >= capacity
+	var equipment_selector := OptionButton.new()
+	equipment_selector.add_item("Relay — cost 5")
+	equipment_selector.set_item_metadata(0, &"relay")
+	for sensor_type: StringName in [&"electrical", &"crystal", &"moisture"]:
+		equipment_selector.add_item("%s — cost 4" % str(NetworkModel.SENSOR_LABELS[sensor_type]))
+		equipment_selector.set_item_metadata(equipment_selector.item_count - 1, sensor_type)
+	network_box.add_child(equipment_selector)
+	var install_button := make_button("Install selected equipment")
+	install_button.disabled = phase != Phase.NETWORK_PLANNING or no_capacity or selected_network_site == &"hq" or budget < 4
+	install_button.pressed.connect(install_network_equipment.bind(equipment_selector))
+	network_box.add_child(install_button)
+	var repair_button := make_button("Repair selected site — cost 3")
+	repair_button.disabled = phase != Phase.NETWORK_PLANNING or no_capacity or not network_model.has_damage(selected_network_site) or budget < 3
+	repair_button.pressed.connect(repair_selected_site)
+	network_box.add_child(repair_button)
+	var collect_button := make_button("Collect connected readings — cost 1")
+	collect_button.disabled = phase != Phase.NETWORK_PLANNING or no_capacity or not has_collectable_network_reading() or budget < 1
+	collect_button.pressed.connect(collect_connected_readings)
+	network_box.add_child(collect_button)
 	var actions: Array = scenario.get("actions", []) as Array
-	if actions.is_empty():
+	if actions.is_empty() and capacity == 0:
 		network_box.add_child(make_wrapped_label("No remote request is needed today. All essential evidence is already available.", 15, COLOR_MUTED))
 		return
-	var capacity: int = int(scenario["capacity"])
-	network_box.add_child(make_wrapped_label("Each request uses 1 capacity and delays warning preparation.", 15, COLOR_MUTED))
+	network_box.add_child(make_wrapped_label("Each installation, repair, collection, or survey uses 1 capacity and delays warning preparation.", 15, COLOR_MUTED))
 	for action: Dictionary in actions:
 		var button := make_button("%s  —  cost %d" % [str(action["label"]), int(action["cost"])])
-		button.disabled = phase != Phase.NETWORK_PLANNING or observations_used >= capacity or bool(action.get("used", false)) or budget < int(action["cost"])
+		var required_relay: StringName = StringName(action.get("requires_relay", &""))
+		var relay_unavailable: bool = required_relay != &"" and not network_model.online_relays().has(required_relay)
+		button.disabled = phase != Phase.NETWORK_PLANNING or no_capacity or bool(action.get("used", false)) or budget < int(action["cost"]) or relay_unavailable
+		if relay_unavailable:
+			button.tooltip_text = "%s relay is offline." % network_model.site_label(required_relay)
 		if bool(action.get("used", false)):
 			button.text = "%s  —  RECEIVED" % str(action["label"])
 		button.pressed.connect(request_observation.bind(action))
 		network_box.add_child(button)
 	if observations_used >= capacity:
 		network_box.add_child(make_wrapped_label("CAPACITY EXHAUSTED — remaining requests are unavailable.", 14, COLOR_WARNING))
+
+func select_network_site(site_id: StringName) -> void:
+	selected_network_site = site_id
+	log_event("Network site selected: %s" % network_model.site_label(site_id))
+	refresh_network_actions()
+
+func install_network_equipment(selector: OptionButton) -> void:
+	if not can_take_network_action():
+		return
+	var equipment_type: StringName = StringName(selector.get_item_metadata(selector.selected))
+	var cost: int = 5 if equipment_type == &"relay" else 4
+	if budget < cost:
+		log_event("Installation rejected: insufficient budget (cost %d)." % cost)
+		return
+	var error_message: String
+	if equipment_type == &"relay":
+		error_message = network_model.install_relay(selected_network_site)
+	else:
+		error_message = network_model.install_sensor(selected_network_site, equipment_type)
+	if not error_message.is_empty():
+		log_event("Installation rejected: %s" % error_message)
+		return
+	consume_network_action(cost)
+	if equipment_type == &"relay":
+		log_event("Installed a relay at %s." % network_model.site_label(selected_network_site))
+		reveal_network_readings()
+	else:
+		log_event("Installed a %s at %s." % [NetworkModel.SENSOR_LABELS[equipment_type], network_model.site_label(selected_network_site)])
+		reveal_network_readings(selected_network_site, equipment_type)
+	refresh_all()
+
+func repair_selected_site() -> void:
+	if not can_take_network_action():
+		return
+	if budget < 3:
+		log_event("Repair rejected: insufficient budget (cost 3).")
+		return
+	var repair_message: String = network_model.repair_site(selected_network_site)
+	if repair_message.begins_with("No damaged") or repair_message.begins_with("Unknown"):
+		log_event("Repair rejected: %s" % repair_message)
+		return
+	consume_network_action(3)
+	log_event(repair_message)
+	reveal_network_readings()
+	refresh_all()
+
+func collect_connected_readings() -> void:
+	if not can_take_network_action():
+		return
+	if not has_collectable_network_reading():
+		log_event("Collection rejected: no unread connected sensor has relevant evidence today.")
+		return
+	if budget < 1:
+		log_event("Collection rejected: insufficient budget (cost 1).")
+		return
+	consume_network_action(1)
+	var revealed: int = reveal_network_readings()
+	log_event("Collected %d connected network reading%s." % [revealed, "" if revealed == 1 else "s"])
+	refresh_all()
+
+func can_take_network_action() -> bool:
+	if phase != Phase.NETWORK_PLANNING:
+		log_event("Action rejected: network changes are only available during Network Planning.")
+		return false
+	if observations_used >= int(scenario.get("capacity", 0)):
+		log_event("Action rejected: no observation capacity remains.")
+		return false
+	return true
+
+func consume_network_action(cost: int) -> void:
+	observations_used += 1
+	observation_spend += cost
+	budget -= cost
+
+func has_collectable_network_reading() -> bool:
+	for reading: Dictionary in readings:
+		if str(reading.get("quality", "missing")) != "missing" or not reading.has("network_sensor"):
+			continue
+		if network_model.has_online_sensor(StringName(reading["network_site"]), StringName(reading["network_sensor"])):
+			return true
+	return false
+
+func reveal_network_readings(site_filter: StringName = &"", sensor_filter: StringName = &"") -> int:
+	var revealed: int = 0
+	for reading: Dictionary in readings:
+		if str(reading.get("quality", "missing")) != "missing" or not reading.has("network_sensor"):
+			continue
+		var site_id: StringName = StringName(reading["network_site"])
+		var sensor_type: StringName = StringName(reading["network_sensor"])
+		if site_filter != &"" and site_id != site_filter:
+			continue
+		if sensor_filter != &"" and sensor_type != sensor_filter:
+			continue
+		if not network_model.has_online_sensor(site_id, sensor_type):
+			continue
+		reading["value"] = reading["network_value"]
+		reading["quality"] = reading["network_quality"]
+		revealed += 1
+		log_event("%s delivered: %s" % [network_model.site_label(site_id), str(reading["network_value"])])
+	return revealed
 
 func request_observation(action: Dictionary) -> void:
 	if phase != Phase.NETWORK_PLANNING:
@@ -360,10 +509,12 @@ func request_observation(action: Dictionary) -> void:
 	if budget < cost:
 		log_event("Request rejected: insufficient budget (cost %d)." % cost)
 		return
+	var required_relay: StringName = StringName(action.get("requires_relay", &""))
+	if required_relay != &"" and not network_model.online_relays().has(required_relay):
+		log_event("Request rejected: %s relay is offline." % network_model.site_label(required_relay))
+		return
 	action["used"] = true
-	observations_used += 1
-	observation_spend += cost
-	budget -= cost
+	consume_network_action(cost)
 	var reveal_id: StringName = StringName(action["reveals"])
 	var found: bool = false
 	for reading: Dictionary in readings:
@@ -407,6 +558,11 @@ func show_warning_confirmation() -> void:
 func confirm_warning() -> void:
 	set_phase(Phase.STORM_RESOLUTION)
 	var result: Dictionary = OutcomeCalculator.calculate(scenario, districts, selected_hazard, selected_severity, warned_districts, observations_used, observation_spend)
+	var network_events: Array[String] = network_model.resolve_hazard(StringName(scenario["hazard"]), selected_hazard, warned_districts, bool(result["late"]))
+	var calculation_lines: Array = result["lines"] as Array
+	for event: String in network_events:
+		calculation_lines.append(event)
+	result["network_events"] = network_events
 	trust = maxi(0, trust + int(result["trust_delta"]))
 	# Observation spend was paid immediately, so apply the remainder of the daily result here.
 	budget += int(result["budget_delta"]) + observation_spend
@@ -445,7 +601,7 @@ func show_final_report() -> void:
 		rating = "Trusted island forecaster"
 	elif trust >= 45:
 		rating = "Steady desk operator"
-	var body := "%s\n\nFinal trust: %d   Final budget: %d\nCorrect hazard calls: %d / 3\nDistricts protected: %d\nTotal damage: %d\n\n%s\n\nRestart resets all deterministic scenarios without closing the application." % [rating, trust, budget, correct_days, protected, total_damage, "\n".join(lines)]
+	var body := "%s\n\nFinal trust: %d   Final budget: %d\nCorrect hazard calls: %d / 3\nDistricts protected: %d\nTotal damage: %d\n\n%s\n\nFINAL NETWORK\n%s\n\nRestart resets all deterministic scenarios and network construction without closing the application." % [rating, trust, budget, correct_days, protected, total_damage, "\n".join(lines), network_model.summary()]
 	show_modal("THREE-DAY PERFORMANCE REPORT", body, "Restart prototype", restart_session)
 
 func on_hazard_selected(index: int) -> void:
@@ -472,7 +628,7 @@ func show_help() -> void:
 	var lines: Array[String] = []
 	for hazard: HazardDefinition in hazards:
 		lines.append("%s\nEvidence: %s\nThreat: %s" % [hazard.display_name, hazard.evidence_summary, hazard.threat_summary])
-	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution. Network requests cost budget and capacity. On Day 3, a second request makes the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage." % "\n\n".join(lines)
+	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nNETWORK\nSelect fixed sites on the diagram. HQ and healthy connected relays create a transmission path. Each site has one relay slot and one sensor slot. Installations, repairs, collections, and surveys cost budget and capacity; equipment persists between days and can be damaged by an unprotected hazard. R / R! marks healthy or damaged relays; E, C, and M mark sensor types.\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution. On Day 3, a second network action makes the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage." % "\n\n".join(lines)
 	show_modal("RULES / HELP", body, "Close", func() -> void: pass)
 
 func show_modal(title_text: String, body_text: String, primary_text: String, primary_action: Callable, secondary_text: String = "", secondary_action: Callable = Callable()) -> void:
