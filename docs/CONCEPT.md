@@ -6,6 +6,8 @@ Can incomplete weather readings, limited resources, network planning, and conseq
 
 The player operates a small weather bureau serving three inhabited floating-island districts. The simulation is fictional but consistent: each hazard has a learnable three-part evidence pattern, and every result explains the actual pattern so failure is attributable to a decision rather than an arbitrary answer.
 
+First-time players receive an optional guided bureau tour after the Day One briefing. It follows the live daily flow, focuses one interface area at a time, and requires real district, phase, hazard, and warning-district interactions without choosing answers or spending resources on the player's behalf. Completion can be skipped and replayed.
+
 ## Daily loop
 
 Briefing → inspect local readings → decide whether to spend on remote observations → classify the hazard and severity → choose districts → confirm → resolve → understand the calculation.

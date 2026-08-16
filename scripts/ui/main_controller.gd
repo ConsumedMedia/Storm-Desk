@@ -1,5 +1,10 @@
 extends Control
 
+signal phase_changed(phase_value: int)
+signal district_inspected
+signal hazard_selection_made
+signal district_warning_changed
+
 enum Phase { MORNING_BRIEFING, OBSERVATION, NETWORK_PLANNING, WARNING_DECISION, WARNING_CONFIRMATION, STORM_RESOLUTION, DAILY_REPORT, FINAL_REPORT }
 
 const COLOR_BG := Color("101925")
@@ -26,7 +31,14 @@ var selected_hazard: StringName = &""
 var selected_severity: int = 2
 var warned_districts: Array[StringName] = []
 var reports: Array[Dictionary] = []
+var tutorial_controller: TutorialController
 
+var header_panel: PanelContainer
+var status_panel: PanelContainer
+var map_panel: PanelContainer
+var readings_panel: PanelContainer
+var actions_panel: PanelContainer
+var log_panel: PanelContainer
 var day_label: Label
 var phase_label: Label
 var budget_label: Label
@@ -41,6 +53,7 @@ var selected_network_site: StringName = &"ridge"
 var district_detail: Label
 var event_log: TextEdit
 var continue_button: Button
+var help_button: Button
 var hazard_option: OptionButton
 var severity_option: OptionButton
 var district_checks: Dictionary = {}
@@ -52,6 +65,9 @@ func _ready() -> void:
 	scenarios = ScenarioCatalog.days()
 	network_model = NetworkModel.new()
 	build_interface()
+	tutorial_controller = TutorialController.new()
+	add_child(tutorial_controller)
+	tutorial_controller.setup(self, tutorial_target)
 	restart_session()
 
 func build_interface() -> void:
@@ -72,13 +88,13 @@ func build_interface() -> void:
 	page.add_theme_constant_override("separation", 10)
 	margin.add_child(page)
 
-	var header := PanelContainer.new()
-	header.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 10))
-	header.custom_minimum_size.y = 64
-	page.add_child(header)
+	header_panel = PanelContainer.new()
+	header_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 10))
+	header_panel.custom_minimum_size.y = 64
+	page.add_child(header_panel)
 	var header_row := HBoxContainer.new()
 	header_row.add_theme_constant_override("separation", 12)
-	header.add_child(header_row)
+	header_panel.add_child(header_row)
 	var title := make_label("STORM DESK", 23, COLOR_ACCENT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_child(title)
@@ -90,11 +106,11 @@ func build_interface() -> void:
 	header_row.add_child(trust_label)
 	capacity_label = make_label("CAPACITY 0", 16, COLOR_TEXT)
 	header_row.add_child(capacity_label)
-	var help_button := make_button("Rules / Help")
+	help_button = make_button("Rules / Help")
 	help_button.pressed.connect(show_help)
 	header_row.add_child(help_button)
 
-	var status_panel := PanelContainer.new()
+	status_panel = PanelContainer.new()
 	status_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL_ALT, 8))
 	page.add_child(status_panel)
 	var status_row := HBoxContainer.new()
@@ -114,7 +130,7 @@ func build_interface() -> void:
 	columns.add_child(build_readings_panel())
 	columns.add_child(build_actions_panel())
 
-	var log_panel := PanelContainer.new()
+	log_panel = PanelContainer.new()
 	log_panel.custom_minimum_size.y = 112
 	log_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
 	page.add_child(log_panel)
@@ -143,6 +159,7 @@ func build_interface() -> void:
 
 func build_map_panel() -> Control:
 	var panel := PanelContainer.new()
+	map_panel = panel
 	panel.custom_minimum_size.x = 335
 	panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
 	var box := VBoxContainer.new()
@@ -168,6 +185,7 @@ func build_map_panel() -> Control:
 
 func build_readings_panel() -> Control:
 	var panel := PanelContainer.new()
+	readings_panel = panel
 	panel.custom_minimum_size.x = 420
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
@@ -187,6 +205,7 @@ func build_readings_panel() -> Control:
 
 func build_actions_panel() -> Control:
 	var panel := PanelContainer.new()
+	actions_panel = panel
 	panel.custom_minimum_size.x = 385
 	panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
 	var box := VBoxContainer.new()
@@ -268,8 +287,20 @@ func load_day() -> void:
 		"MORNING BRIEFING — DAY %d" % int(scenario["day"]),
 		"%s\n\n%s" % [str(scenario["briefing"]), str(scenario["tutorial"])],
 		"Begin observations",
-		func() -> void: set_phase(Phase.OBSERVATION)
+		begin_observations
 	)
+
+func begin_observations() -> void:
+	set_phase(Phase.OBSERVATION)
+	if day_index == 0 and tutorial_controller.should_offer():
+		show_modal(
+			"WELCOME TO STORM DESK",
+			"A short guided tour can introduce the bureau interface while you perform the real Day One flow. It highlights one required area at a time and never chooses a warning for you.\n\nYou can skip it now or replay it later from Rules / Help.",
+			"Start guided tour",
+			tutorial_controller.start,
+			"Skip tour",
+			tutorial_controller.skip_permanently
+		)
 
 func set_phase(next_phase: Phase) -> void:
 	phase = next_phase
@@ -312,6 +343,7 @@ func set_phase(next_phase: Phase) -> void:
 	network_scroll.visible = phase != Phase.WARNING_DECISION and phase != Phase.WARNING_CONFIRMATION
 	warning_box.visible = phase == Phase.WARNING_DECISION or phase == Phase.WARNING_CONFIRMATION
 	refresh_all()
+	phase_changed.emit(int(phase))
 
 func refresh_all() -> void:
 	day_label.text = "DAY %d / 3" % int(scenario.get("day", 1))
@@ -613,23 +645,57 @@ func on_hazard_selected(index: int) -> void:
 			check.set_pressed_no_signal(false)
 	if selected_hazard == &"":
 		warned_districts.clear()
+	hazard_selection_made.emit()
 
 func on_district_toggled(enabled: bool, district_id: StringName) -> void:
 	if enabled and not warned_districts.has(district_id):
 		warned_districts.append(district_id)
 	elif not enabled:
 		warned_districts.erase(district_id)
+	district_warning_changed.emit()
 
 func show_district(district: DistrictDefinition) -> void:
 	district_detail.text = "%s\n\n%s\n\nVulnerability multipliers\nSparkstorm %.1fx  /  Glasswind %.1fx  /  Cloudburst %.1fx" % [district.display_name, district.description, district.vulnerability_for(&"sparkstorm"), district.vulnerability_for(&"glasswind"), district.vulnerability_for(&"cloudburst")]
 	log_event("Map selected: %s" % district.display_name)
+	district_inspected.emit()
 
 func show_help() -> void:
 	var lines: Array[String] = []
 	for hazard: HazardDefinition in hazards:
 		lines.append("%s\nEvidence: %s\nThreat: %s" % [hazard.display_name, hazard.evidence_summary, hazard.threat_summary])
-	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nNETWORK\nSelect fixed sites on the diagram. HQ and healthy connected relays create a transmission path. Each site has one relay slot and one sensor slot. Installations, repairs, collections, and surveys cost budget and capacity; equipment persists between days and can be damaged by an unprotected hazard. R / R! marks healthy or damaged relays; E, C, and M mark sensor types.\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution. On Day 3, a second network action makes the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage." % "\n\n".join(lines)
-	show_modal("RULES / HELP", body, "Close", func() -> void: pass)
+	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nNETWORK\nSelect fixed sites on the diagram. HQ and healthy connected relays create a transmission path. Each site has one relay slot and one sensor slot. Installations, repairs, collections, and surveys cost budget and capacity; equipment persists between days and can be damaged by an unprotected hazard. R / R! marks healthy or damaged relays; E, C, and M mark sensor types.\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution. On Day 3, a second network action makes the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage.\n\nReplay Guided Tour resets to Day One when necessary; it does not preserve the current run." % "\n\n".join(lines)
+	show_modal("RULES / HELP", body, "Close", func() -> void: pass, "Replay guided tour", replay_guided_tour)
+
+func replay_guided_tour() -> void:
+	tutorial_controller.reset_completion()
+	if day_index == 0 and phase == Phase.OBSERVATION:
+		tutorial_controller.start()
+	else:
+		restart_session()
+
+func tutorial_target(target_id: StringName) -> Control:
+	match target_id:
+		&"header":
+			return header_panel
+		&"district_map":
+			return map_panel
+		&"readings":
+			return readings_panel
+		&"help":
+			return help_button
+		&"event_log":
+			return log_panel
+		&"continue":
+			return continue_button
+		&"network":
+			return actions_panel
+		&"hazard":
+			return hazard_option
+		&"severity":
+			return severity_option
+		&"warning_districts":
+			return warning_box
+	return null
 
 func show_modal(title_text: String, body_text: String, primary_text: String, primary_action: Callable, secondary_text: String = "", secondary_action: Callable = Callable()) -> void:
 	clear_children(modal_layer)

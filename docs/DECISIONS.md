@@ -61,3 +61,11 @@ Decision: correct timely warnings protect relevant network equipment; missed or 
 Reason: construction choices need consequences across days, and repair-versus-evidence decisions reinforce the existing confidence/time/budget loop.
 
 Alternative considered: automatic between-day repairs. Rejected because it would remove the primary reason for persistent network state.
+
+## 2026-08-15 — Use a state-aware, skippable guided tour
+
+Decision: introduce first-time onboarding after the Day One briefing with 12 live steps across Observation, Network Planning, and Warning Decision. Informational targets advance when inspected; district, phase, hazard, and warning-district steps require the real host action. Completion or skip is stored as one local preference and can be reset from Rules/Help.
+
+Reason: owner testing showed that the interface benefits from explicit focus guidance, while a static slideshow would not teach where controls live or how phase transitions work. Signal-gated steps teach interaction without selecting answers or consuming resources for the player.
+
+Alternatives considered: permanently embedded callouts, video onboarding, and hard-coded coordinate highlights. Rejected because they would add clutter, external assets, or break under container/layout changes.

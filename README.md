@@ -19,13 +19,14 @@ No dependencies, plugins, asset downloads, autoloads, or external services are r
 ## How to play
 
 1. Read the morning briefing and open Rules / Help for the three learnable hazard patterns.
-2. Select district map cards to review vulnerabilities.
-3. Inspect each instrument value and its quality tag.
-4. Continue to Network Planning. Select fixed sites on the diagram, install or repair equipment, collect connected readings, or commission a relay survey. Every action costs budget and observation capacity.
-5. Continue to the Warning Desk. Choose a hazard (or stand down), severity, and districts.
-6. Review and confirm the warning. Choices can be changed until confirmation.
-7. Read the calculation-backed daily report, then continue.
-8. After Day Three, review the final report or restart without closing the application.
+2. On the first run, start or skip the guided tour. It highlights the current focus area and requires the relevant interface action before advancing.
+3. Select district map cards to review vulnerabilities.
+4. Inspect each instrument value and its quality tag.
+5. Continue to Network Planning. Select fixed sites on the diagram, install or repair equipment, collect connected readings, or commission a relay survey. Every action costs budget and observation capacity.
+6. Continue to the Warning Desk. Choose a hazard (or stand down), severity, and districts.
+7. Review and confirm the warning. Choices can be changed until confirmation.
+8. Read the calculation-backed daily report, then continue.
+9. After Day Three, review the final report or restart without closing the application.
 
 Mouse and keyboard focus navigation are supported by standard Godot Controls. The interface does not rely on color alone: phases, qualities, disabled actions, and warnings are labeled in text.
 
@@ -38,6 +39,7 @@ Mouse and keyboard focus navigation are supported by standard Godot Controls. Th
 - Persistent five-site sensor/relay graph with fixed build locations, selectable nodes, one relay and one sensor slot per remote site, alternate routing, and labeled connection state
 - Electrical, crystal, and moisture sensor installation; relay installation; connected reading collection; damaged-equipment repair
 - Network equipment that persists between days and can be damaged by unprotected Sparkstorm, Glasswind, or Cloudburst outcomes
+- A 12-step, state-aware guided tour with dimmed input masking, labeled highlights, required district/phase/warning interactions, persistent skip/completion state, and replay from Rules/Help
 - Correct, false, missed, exaggerated, underestimated, timely, and late warning outcomes
 - Trust, budget, damage, vulnerability, observation, warning-operation, and repair calculations
 - Daily evidence explanations, calculation breakdowns, final summary, and in-app restart
@@ -53,9 +55,9 @@ Run the repository-native checks without installing a test framework:
 godot --headless --path . --script res://tests/run_tests.gd
 ```
 
-The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, outages, repairs, persistent hazard damage, network-driven evidence, all three coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-15 passed 38 checks with exit code 0 under Godot 4.7.1.
+The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, outages, repairs, persistent hazard damage, network-driven evidence, guided-tour progression, required interactions, skip, local completion preference, all three coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-15 passed 47 checks with exit code 0 under Godot 4.7.1.
 
-`tests/capture_ui.gd` is a visual-QA helper. Run it with a graphics display (not `--headless`); it saves an ignored capture to `.godot/ui-capture.png`.
+`tests/capture_ui.gd` and `tests/capture_tutorial.gd` are visual-QA helpers. Run them with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical UI bounds.
 
 ## Repository structure
 
@@ -73,3 +75,4 @@ The suite validates hazard evaluation, district vulnerability, warning timing, d
 - The district map remains a structured board; network construction uses a fixed-node graph rather than free placement or terrain simulation.
 - The UI is tuned for a 1280×720 reference window; very small windows are not a target.
 - Audio, animation, final art, accessibility narration, and localization are deferred.
+- Guided-tour completion is the only persisted preference. It is stored in `user://settings.cfg`; Rules/Help can reset and replay it. No session save/load exists.

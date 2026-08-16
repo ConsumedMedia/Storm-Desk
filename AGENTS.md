@@ -13,6 +13,8 @@ This repository contains the playable Storm Desk three-day Godot 4.7.x prototype
 - Prefer composition, signals or explicit coordinator calls, small focused scripts, deterministic inputs, and data-driven content.
 - Keep hazard and district facts in custom Resources under `resources/`. Add scenario content through `ScenarioCatalog` until a concrete need justifies a different authoring format.
 - Preserve the explicit phase flow in `main_controller.gd`: briefing, observation, network planning, warning decision/confirmation, resolution, daily report, final report.
+- Keep guided-tour sequence/persistence in `TutorialController` and mask/highlight rendering in `TutorialOverlay`. Add target controls through `tutorial_target()` instead of screen coordinates.
+- Tutorial steps must never choose an answer, spend resources, or silently alter simulation state. Required gameplay actions must advance through host signals.
 - Do not hide action failures. Disable invalid actions and log an explanation when guard code rejects one.
 - Avoid autoloads unless a durable cross-scene need exists and document any added autoload in `docs/ARCHITECTURE.md`.
 

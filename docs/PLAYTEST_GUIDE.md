@@ -9,12 +9,13 @@ Target session length: 15–20 minutes.
 ## Test procedure
 
 1. Start a fresh session and record whether the player opens Rules / Help.
-2. Observe whether they inspect district vulnerabilities before warning.
-3. On Day One, note whether the complete Sparkstorm pattern is understood without intervention.
-4. On Day Two, ask why they selected one network request over the other.
-5. On Day Three, note whether they recognize the charge conflict and whether they accept a late warning for more confidence.
-6. After each report, ask the player to explain why trust, budget, and damage changed before they continue.
-7. At the final report, ask them to restart and verify that the session returns to Day One.
+2. For a first-time session, record whether the player starts or skips the guided tour and whether each highlighted action is understood without facilitator help.
+3. Observe whether they inspect district vulnerabilities before warning.
+4. On Day One, note whether the complete Sparkstorm pattern is understood without intervention.
+5. On Day Two, ask why they selected one network request over the other.
+6. On Day Three, note whether they recognize the charge conflict and whether they accept a late warning for more confidence.
+7. After each report, ask the player to explain why trust, budget, and damage changed before they continue.
+8. At the final report, ask them to restart and verify that the session returns to Day One without automatically replaying a completed tour.
 
 ## Observation sheet
 
@@ -50,4 +51,4 @@ Target session length: 15–20 minutes.
 
 ## Validation baseline
 
-As of 2026-08-15, the automated suite passes 38 checks with exit code 0, including fixed-node connectivity, installation, alternate routing, relay damage/repair, persistent equipment, and network-driven readings. The main scene runs under Godot 4.7.1, and the GPU capture verifies the Day Two network-planning layout at 1280×720. By owner decision, structured external playtesting is deferred until after the next contained development milestone; human fun, pacing, and comprehension therefore remain unvalidated.
+As of 2026-08-15, the automated suite passes 47 checks with exit code 0, including fixed-node connectivity, persistent equipment, guided-tour progression, required interactions, skip, and preference persistence. The main scene runs under Godot 4.7.1; GPU captures verify Day Two network planning and the tutorial overlay at 1280×720. By owner decision, structured external playtesting is deferred until after the next contained development milestone; human fun, pacing, and comprehension therefore remain unvalidated.

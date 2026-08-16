@@ -13,7 +13,8 @@ Last updated: 2026-08-15
 - Added explicit phases, map/district detail, readings, network controls, warning editing and confirmation, event log, help, daily reports, final report, and restart.
 - Added a persistent fixed-site sensor/relay network with selectable nodes, graph connectivity, equipment installation, alternate routing, damage, repairs, and network-driven readings.
 - Added scroll-safe district and network panels after owner testing identified 720px overflow defects.
-- Expanded to 38 dependency-free automated checks and a graphics-backed 1280×720 Day Two network-planning regression capture.
+- Added an optional 12-step guided tour with live target cutouts, input masking, phase-aware action requirements, persistent completion/skip preference, and Rules/Help replay.
+- Expanded to 47 dependency-free automated checks plus graphics-backed 1280×720 network-planning and tutorial regression captures.
 - Added actual implementation documentation.
 
 ## Current work

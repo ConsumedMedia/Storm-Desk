@@ -4,7 +4,7 @@
 
 `scenes/main/main.tscn` is a minimal full-window Control root. `scripts/ui/main_controller.gd` creates the container-based interface and coordinates the session. There are no autoloads.
 
-The coordinator owns transient session state: day index, explicit phase enum, budget, trust, observation usage/spend, current readings, warning choices, accumulated reports, and one persistent `NetworkModel`. Modal panels provide briefing, help, confirmation, daily results, and the final report. Standard Godot controls provide focus and disabled-state behavior.
+The coordinator owns transient session state: day index, explicit phase enum, budget, trust, observation usage/spend, current readings, warning choices, accumulated reports, and one persistent `NetworkModel`. Modal panels provide briefing, help, confirmation, daily results, and the final report. It exposes named tutorial targets and emits phase/interaction signals, but does not own tour sequencing. Standard Godot controls provide focus and disabled-state behavior.
 
 ## State flow
 
@@ -29,6 +29,8 @@ The phase enum is explicit:
 - `scenario_catalog.gd` is deterministic content data for the three prototype days. Scenario dictionaries contain briefing copy, ground truth, readings with quality metadata, network actions, capacity, safe-action timing limits, and evidence explanations.
 - `network_model.gd` owns five fixed sites, graph edges, relay reachability, sensor/relay slots, equipment health, installation, alternate routing, repairs, and persistent hazard damage. Bureau HQ and healthy connected relays form the traversal graph; a sensor is available when its site touches that graph.
 - `network_diagram.gd` is a replaceable Control view of `NetworkModel`. It draws labeled nodes and edges, accepts site selection, and never owns simulation truth.
+- `tutorial_controller.gd` owns the 12-step onboarding sequence, host-signal gating, skip/completion state, and one `ConfigFile` preference at `user://settings.cfg`. It resolves targets through the main controller's `tutorial_target()` callable, so no step contains screen coordinates.
+- `tutorial_overlay.gd` owns presentation and input masking. Four blocking rectangles leave a live cutout around the target; a labeled border and popup are clamped to the viewport. Informational targets use a transparent click catcher, while action targets leave the underlying Godot Control interactive.
 - `hazard_evaluator.gd` scores visible evidence independently of the UI. Imprecise evidence carries half weight; faulty evidence initially appears plausible until contradicted.
 - `outcome_calculator.gd` is a pure calculation boundary for threat coverage, timing, severity, damage, trust, and budget.
 
@@ -56,4 +58,4 @@ Add hazard and district definitions as `.tres` files and register their paths in
 
 ## Tests
 
-`tests/run_tests.gd` is a dependency-free SceneTree test runner. It covers simulation calculations, deterministic ordering, graph connectivity, installation, alternate routes, relay outages and repair, persistent hazard damage, network-driven evidence, invalid-action guards, all three coordinator-driven day resolutions, final report, and restart. `tests/capture_ui.gd` renders a graphics-backed 1280×720 Day Two network-planning capture into ignored `.godot/` output and asserts that the footer and network desk remain inside the viewport.
+`tests/run_tests.gd` is a dependency-free SceneTree test runner. It covers simulation calculations, deterministic ordering, graph connectivity, installation, alternate routes, relay outages and repair, persistent hazard damage, network-driven evidence, invalid-action guards, tutorial progression/required actions/skip/persistence, all three coordinator-driven day resolutions, final report, and restart. `tests/capture_ui.gd` renders a graphics-backed 1280×720 Day Two network-planning capture. `tests/capture_tutorial.gd` renders the first guided-tour step. Both save ignored output and assert critical viewport bounds.

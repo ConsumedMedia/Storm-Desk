@@ -122,6 +122,45 @@ func run_all() -> void:
 	main.call("restart_session")
 	check(int(main.get("budget")) == 30 and int(main.get("trust")) == 50 and int(main.get("day_index")) == 0, "Restart resets the session without restarting the application")
 	check(StringName((main.get("network_model") as NetworkModel).equipment_at(&"farmland").get("sensor", &"")) == &"", "Restart resets persistent network construction")
+
+	var tutorial: TutorialController = main.get("tutorial_controller") as TutorialController
+	tutorial.persistence_enabled = false
+	main.call("close_modal")
+	main.call("set_phase", 1)
+	tutorial.start()
+	check(tutorial.active and tutorial.current_step == 0 and tutorial.overlay.visible, "Guided tour starts on the Day One Observation interface")
+	tutorial.on_target_clicked()
+	main.call("show_district", district_by_id(districts, &"farmland"))
+	check(tutorial.current_step == 2, "Tour requires a real district inspection before advancing")
+	tutorial.on_target_clicked() # Readings
+	tutorial.on_target_clicked() # Help
+	tutorial.on_target_clicked() # Event log
+	check(tutorial.current_step == 5, "Informational highlights advance in the intended order")
+	main.call("set_phase", 2)
+	check(tutorial.current_step == 6, "Network Planning phase action advances to the network highlight")
+	tutorial.on_target_clicked()
+	main.call("set_phase", 3)
+	main.call("on_hazard_selected", 1)
+	tutorial.on_target_clicked() # Severity
+	main.call("on_district_toggled", true, &"industrial")
+	check(tutorial.current_step == 11, "Warning tour requires real hazard and district interactions")
+	main.call("set_phase", 4)
+	check(not tutorial.active and not tutorial.overlay.visible, "Tour completes at Warning Review and removes its input mask")
+	tutorial.start()
+	tutorial.skip_permanently()
+	check(not tutorial.active and not tutorial.overlay.visible, "Skip immediately dismisses an active tour")
+
+	var persistence_test := TutorialController.new()
+	root.add_child(persistence_test)
+	persistence_test.config_path = "user://storm_desk_tutorial_test.cfg"
+	persistence_test.reset_completion()
+	check(persistence_test.should_offer(), "Reset tutorial preference makes onboarding available")
+	persistence_test.finish(true)
+	check(not persistence_test.should_offer(), "Completed or skipped tour persists its dismissal preference")
+	var tutorial_test_path: String = ProjectSettings.globalize_path(persistence_test.config_path)
+	if FileAccess.file_exists(tutorial_test_path):
+		DirAccess.remove_absolute(tutorial_test_path)
+	persistence_test.queue_free()
 	main.queue_free()
 
 	if failures == 0:
