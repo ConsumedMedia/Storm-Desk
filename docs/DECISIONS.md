@@ -113,3 +113,11 @@ Decision: autosave the active first week after completed actions and phase chang
 Reason: a 25–35 minute campaign should survive an interrupted session without adding account infrastructure or a save-management screen. Reconstructing authored scenario truth from the current catalog keeps content updates authoritative, while persisting transient evidence, costs, warning choices, reports, outage history, and network health prevents duplicated actions or lost consequences.
 
 Alternatives considered: manual checkpoints, multiple named slots, binary serialization, cloud storage, or persisting complete scenario records. Deferred because a single transparent local slot covers the prototype need with readable built-in tooling and a smaller compatibility surface.
+
+## 2026-08-16 — Centralize accessible player controls in Settings
+
+Decision: replace the header's direct Rules / Help button with one keyboard-accessible Settings menu. Persist reduced motion, 115% larger text, and high-contrast/color assistance in a versioned settings section alongside—but separate from—onboarding completion. Include Rules / Help, guided-tour replay, Save Progress, Save & Quit, and confirmed Quit to Desktop actions in the same surface.
+
+Reason: accessibility and session controls should be discoverable in one predictable place. Immediate preference application lets players evaluate changes without restarting, while bounded scaling and compact large-text spacing preserve the tested 1280×720 layout. Explicit text tags remain the source of truth so contrast changes never make color the sole state cue.
+
+Alternatives considered: separate Help, Accessibility, Save, and Quit menus; unrestricted UI scaling; remappable controls; or a title-screen settings scene. Deferred because the prototype has one gameplay scene, a fixed reference resolution, and no action-remapping requirement yet.

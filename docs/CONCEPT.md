@@ -10,6 +10,8 @@ First-time players receive an optional guided bureau tour after the Day One brie
 
 An interrupted first week autosaves locally after completed actions and phase changes. The next launch offers a choice to resume the exact desk state or replace it with a new week; completed weeks do not remain as resumable history.
 
+One Settings surface groups reduced motion, larger text, high contrast, rules, onboarding replay, save, and quit actions. Text labels remain authoritative wherever color communicates state, and the complete forecast flow remains keyboard reachable.
+
 ## Daily loop
 
 Briefing → inspect local readings → decide whether to spend on remote observations → classify the hazard and severity → choose districts → confirm → resolve → understand the calculation → review the next-day outlook and optionally maintain the network.

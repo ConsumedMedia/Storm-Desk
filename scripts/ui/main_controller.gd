@@ -17,8 +17,11 @@ const COLOR_MUTED := Color("aebfca")
 const MAINTENANCE_ACTION_LIMIT := 1
 const ATMOSPHERE_BACKDROP_SCRIPT := preload("res://scripts/ui/atmosphere_backdrop.gd")
 const SESSION_SAVE_SCRIPT: Script = preload("res://scripts/simulation/session_save.gd")
+const USER_SETTINGS_SCRIPT: Script = preload("res://scripts/ui/user_settings.gd")
 
 @export var save_path: String = "user://storm_desk_session.cfg"
+@export var settings_path: String = "user://settings.cfg"
+@export var quitting_enabled: bool = true
 
 var hazards: Array[HazardDefinition] = []
 var districts: Array[DistrictDefinition] = []
@@ -42,8 +45,13 @@ var opening_damage_applied_days: Array[int] = []
 var selected_district: StringName = &""
 var district_outcomes: Dictionary = {}
 var autosave_suspended: bool = true
+var user_settings: RefCounted
+var modal_kind: StringName = &""
+var quit_was_requested: bool = false
 
 var atmosphere: Control
+var page_margin: MarginContainer
+var page_container: VBoxContainer
 var header_panel: PanelContainer
 var status_panel: PanelContainer
 var map_panel: PanelContainer
@@ -75,14 +83,19 @@ var warning_summary_label: Label
 var modal_layer: Control
 
 func _ready() -> void:
+	user_settings = USER_SETTINGS_SCRIPT.new() as RefCounted
+	user_settings.set("config_path", settings_path)
+	user_settings.call("load_preferences")
 	hazards = ScenarioCatalog.hazards()
 	districts = ScenarioCatalog.districts()
 	scenarios = ScenarioCatalog.days()
 	network_model = NetworkModel.new()
 	build_interface()
 	tutorial_controller = TutorialController.new()
+	tutorial_controller.config_path = settings_path
 	add_child(tutorial_controller)
 	tutorial_controller.setup(self, tutorial_target)
+	apply_accessibility_preferences()
 	initialize_session()
 
 func build_interface() -> void:
@@ -90,22 +103,22 @@ func build_interface() -> void:
 	atmosphere.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(atmosphere)
 
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_bottom", 16)
-	add_child(margin)
+	page_margin = MarginContainer.new()
+	page_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	page_margin.add_theme_constant_override("margin_left", 20)
+	page_margin.add_theme_constant_override("margin_right", 20)
+	page_margin.add_theme_constant_override("margin_top", 16)
+	page_margin.add_theme_constant_override("margin_bottom", 16)
+	add_child(page_margin)
 
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 10)
-	margin.add_child(page)
+	page_container = VBoxContainer.new()
+	page_container.add_theme_constant_override("separation", 10)
+	page_margin.add_child(page_container)
 
 	header_panel = PanelContainer.new()
 	header_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 10))
 	header_panel.custom_minimum_size.y = 64
-	page.add_child(header_panel)
+	page_container.add_child(header_panel)
 	var header_row := HBoxContainer.new()
 	header_row.add_theme_constant_override("separation", 12)
 	header_panel.add_child(header_row)
@@ -120,13 +133,14 @@ func build_interface() -> void:
 	header_row.add_child(trust_label)
 	capacity_label = make_label("CAPACITY 0", 16, COLOR_TEXT)
 	header_row.add_child(capacity_label)
-	help_button = make_button("Rules / Help")
-	help_button.pressed.connect(show_help)
+	help_button = make_button("Settings")
+	help_button.tooltip_text = "Accessibility, help, save, and quit"
+	help_button.pressed.connect(show_settings)
 	header_row.add_child(help_button)
 
 	status_panel = PanelContainer.new()
 	status_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL_ALT, 8))
-	page.add_child(status_panel)
+	page_container.add_child(status_panel)
 	var status_row := HBoxContainer.new()
 	status_panel.add_child(status_row)
 	phase_label = make_label("PHASE", 17, COLOR_WARNING)
@@ -139,7 +153,7 @@ func build_interface() -> void:
 	var columns := HBoxContainer.new()
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 10)
-	page.add_child(columns)
+	page_container.add_child(columns)
 	columns.add_child(build_map_panel())
 	columns.add_child(build_readings_panel())
 	columns.add_child(build_actions_panel())
@@ -147,17 +161,17 @@ func build_interface() -> void:
 	log_panel = PanelContainer.new()
 	log_panel.custom_minimum_size.y = 112
 	log_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
-	page.add_child(log_panel)
+	page_container.add_child(log_panel)
 	event_log = TextEdit.new()
 	event_log.editable = false
 	event_log.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	event_log.add_theme_font_size_override("font_size", 14)
+	set_scaled_font_size(event_log, 14)
 	event_log.add_theme_color_override("font_readonly_color", COLOR_MUTED)
 	event_log.placeholder_text = "Operations log"
 	log_panel.add_child(event_log)
 
 	var footer := HBoxContainer.new()
-	page.add_child(footer)
+	page_container.add_child(footer)
 	footer_note = make_label("Choices remain editable until you confirm a warning.", 14, COLOR_MUTED)
 	footer_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(footer_note)
@@ -251,7 +265,7 @@ func build_actions_panel() -> Control:
 func build_warning_controls() -> void:
 	warning_box.add_child(make_label("Hazard classification", 15, COLOR_MUTED))
 	hazard_option = OptionButton.new()
-	hazard_option.add_theme_font_size_override("font_size", 16)
+	set_scaled_font_size(hazard_option, 16)
 	hazard_option.add_item("No warning / stand down")
 	hazard_option.set_item_metadata(0, &"")
 	for hazard: HazardDefinition in hazards:
@@ -261,6 +275,7 @@ func build_warning_controls() -> void:
 	warning_box.add_child(hazard_option)
 	warning_box.add_child(make_label("Declared severity", 15, COLOR_MUTED))
 	severity_option = OptionButton.new()
+	set_scaled_font_size(severity_option, 15)
 	for severity: int in [1, 2, 3]:
 		severity_option.add_item("Level %d" % severity)
 		severity_option.set_item_metadata(severity_option.item_count - 1, severity)
@@ -271,7 +286,7 @@ func build_warning_controls() -> void:
 	for district: DistrictDefinition in districts:
 		var check := CheckBox.new()
 		check.text = district.display_name
-		check.add_theme_font_size_override("font_size", 16)
+		set_scaled_font_size(check, 16)
 		check.toggled.connect(on_district_toggled.bind(district.id))
 		district_checks[district.id] = check
 		warning_box.add_child(check)
@@ -544,7 +559,7 @@ func set_phase(next_phase: Phase) -> void:
 	}
 	phase_label.text = "PHASE  /  %s" % str(phase_names[phase])
 	var accent: Color = phase_accent_color()
-	phase_label.add_theme_color_override("font_color", accent)
+	phase_label.add_theme_color_override("font_color", accessible_color(accent))
 	status_panel.add_theme_stylebox_override("panel", bordered_panel_style(COLOR_PANEL_ALT, accent, 8, 12))
 	atmosphere.call("set_phase", int(phase))
 	match phase:
@@ -641,9 +656,11 @@ func refresh_network_actions() -> void:
 	var diagram := NetworkDiagram.new()
 	diagram.set_model(network_model)
 	diagram.set_selected_site(selected_network_site)
+	diagram.set_accessibility(current_text_scale(), high_contrast_enabled())
 	diagram.site_selected.connect(select_network_site)
 	network_box.add_child(diagram)
 	var site_selector := OptionButton.new()
+	set_scaled_font_size(site_selector, 14)
 	for site: Dictionary in network_model.sites:
 		site_selector.add_item(str(site["label"]))
 		site_selector.set_item_metadata(site_selector.item_count - 1, site["id"])
@@ -658,6 +675,7 @@ func refresh_network_actions() -> void:
 	if phase == Phase.MAINTENANCE:
 		var no_maintenance_capacity: bool = maintenance_actions_used >= MAINTENANCE_ACTION_LIMIT
 		var equipment_selector := OptionButton.new()
+		set_scaled_font_size(equipment_selector, 14)
 		equipment_selector.add_item("Relay — cost 5")
 		equipment_selector.set_item_metadata(0, &"relay")
 		for sensor_type: StringName in [&"electrical", &"crystal", &"moisture"]:
@@ -991,7 +1009,7 @@ func on_district_toggled(enabled: bool, district_id: StringName) -> void:
 		warned_districts.erase(district_id)
 	refresh_district_markers()
 	refresh_warning_summary()
-	show_action_feedback("%s warning marker: %s" % ["Added" if enabled else "Removed", district_by_id(district_id).display_name], COLOR_WARNING if enabled else COLOR_MUTED)
+	show_action_feedback("Warning %s: %s" % ["added" if enabled else "removed", district_by_id(district_id).display_name], COLOR_WARNING if enabled else COLOR_MUTED)
 	district_warning_changed.emit()
 	autosave_session()
 
@@ -1005,6 +1023,178 @@ func show_district(district: DistrictDefinition) -> void:
 
 func set_district_detail(district: DistrictDefinition) -> void:
 	district_detail.text = "%s\n\n%s\n\nVulnerability multipliers\nSparkstorm %.1fx  /  Glasswind %.1fx  /  Cloudburst %.1fx" % [district.display_name, district.description, district.vulnerability_for(&"sparkstorm"), district.vulnerability_for(&"glasswind"), district.vulnerability_for(&"cloudburst")]
+
+func show_settings() -> void:
+	clear_children(modal_layer)
+	modal_kind = &"settings"
+	modal_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	modal_layer.modulate = Color.WHITE
+	var scrim := ColorRect.new()
+	scrim.color = Color(0.005, 0.01, 0.018, 0.9) if high_contrast_enabled() else Color(0.02, 0.04, 0.07, 0.82)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal_layer.add_child(scrim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal_layer.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(880, 570)
+	panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL_ALT, 14, 22))
+	center.add_child(panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	panel.add_child(box)
+	box.add_child(make_label("SETTINGS", 25, COLOR_ACCENT))
+	box.add_child(make_wrapped_label("Accessibility changes apply immediately and persist locally. Color is never the only state cue.", 14, COLOR_MUTED))
+	box.add_child(make_label("ACCESSIBILITY", 16, COLOR_WARNING))
+	var reduced_motion_check := CheckBox.new()
+	reduced_motion_check.text = "Reduced motion — pause atmospheric movement and skip interface tweens"
+	set_scaled_font_size(reduced_motion_check, 15)
+	reduced_motion_check.set_pressed_no_signal(bool(user_settings.get("reduced_motion")))
+	reduced_motion_check.toggled.connect(update_accessibility_setting.bind(&"reduced_motion"))
+	box.add_child(reduced_motion_check)
+	var large_text_check := CheckBox.new()
+	large_text_check.text = "Larger interface text — 115% text and network-label scale"
+	set_scaled_font_size(large_text_check, 15)
+	large_text_check.set_pressed_no_signal(bool(user_settings.get("large_text")))
+	large_text_check.toggled.connect(update_accessibility_setting.bind(&"large_text"))
+	box.add_child(large_text_check)
+	var high_contrast_check := CheckBox.new()
+	high_contrast_check.text = "High contrast / color assistance — brighter borders, text, and network states"
+	set_scaled_font_size(high_contrast_check, 15)
+	high_contrast_check.set_pressed_no_signal(bool(user_settings.get("high_contrast")))
+	high_contrast_check.toggled.connect(update_accessibility_setting.bind(&"high_contrast"))
+	box.add_child(high_contrast_check)
+	box.add_child(make_label("HELP AND ONBOARDING", 16, COLOR_WARNING))
+	var help_row := HBoxContainer.new()
+	help_row.add_theme_constant_override("separation", 10)
+	box.add_child(help_row)
+	var rules_button := make_button("Rules / Help")
+	rules_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rules_button.pressed.connect(func() -> void:
+		close_modal()
+		show_help()
+	)
+	help_row.add_child(rules_button)
+	var tour_button := make_button("Replay Guided Tour")
+	tour_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tour_button.pressed.connect(func() -> void:
+		close_modal()
+		replay_guided_tour()
+	)
+	help_row.add_child(tour_button)
+	box.add_child(make_label("SESSION", 16, COLOR_WARNING))
+	box.add_child(make_wrapped_label("Autosave already protects completed actions. Save Progress writes the current resumable state immediately.", 14, COLOR_MUTED))
+	var session_row := HBoxContainer.new()
+	session_row.add_theme_constant_override("separation", 10)
+	box.add_child(session_row)
+	var save_button := make_button("Save Progress")
+	save_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	save_button.pressed.connect(func() -> void:
+		close_modal()
+		save_progress()
+	)
+	session_row.add_child(save_button)
+	var save_quit_button := make_button("Save & Quit")
+	save_quit_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	save_quit_button.pressed.connect(show_quit_confirmation.bind(true))
+	session_row.add_child(save_quit_button)
+	var quit_button := make_button("Quit to Desktop")
+	quit_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	quit_button.pressed.connect(show_quit_confirmation.bind(false))
+	session_row.add_child(quit_button)
+	var close_button := make_button("Close Settings")
+	close_button.custom_minimum_size.y = 42
+	close_button.pressed.connect(close_modal)
+	box.add_child(close_button)
+	var focus_controls: Array[Control] = [reduced_motion_check, large_text_check, high_contrast_check, rules_button, tour_button, save_button, save_quit_button, quit_button, close_button]
+	wire_focus_cycle(focus_controls)
+	reduced_motion_check.call_deferred("grab_focus")
+
+func update_accessibility_setting(enabled: bool, setting_name: StringName) -> void:
+	user_settings.set(setting_name, enabled)
+	var save_error: Error = user_settings.call("save_preferences") as Error
+	if save_error != OK:
+		push_error("Settings save failed with error %d at %s." % [save_error, settings_path])
+	apply_accessibility_preferences()
+	if modal_kind == &"settings":
+		call_deferred("show_settings")
+
+func apply_accessibility_preferences() -> void:
+	if atmosphere != null:
+		atmosphere.call("set_accessibility", reduced_motion_enabled(), high_contrast_enabled())
+	apply_control_preferences(self)
+	var compact_large_text: bool = current_text_scale() > 1.0
+	if page_margin != null:
+		page_margin.add_theme_constant_override("margin_top", 10 if compact_large_text else 16)
+		page_margin.add_theme_constant_override("margin_bottom", 10 if compact_large_text else 16)
+		page_container.add_theme_constant_override("separation", 7 if compact_large_text else 10)
+		header_panel.custom_minimum_size.y = 58 if compact_large_text else 64
+		log_panel.custom_minimum_size.y = 104 if compact_large_text else 112
+		action_feedback_label.custom_minimum_size.x = 360 if compact_large_text else 300
+	if header_panel != null:
+		header_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 10))
+		map_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
+		readings_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
+		actions_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
+		log_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
+		status_panel.add_theme_stylebox_override("panel", bordered_panel_style(COLOR_PANEL_ALT, phase_accent_color(), 8, 12, 2 if high_contrast_enabled() else 1))
+		phase_label.add_theme_color_override("font_color", accessible_color(phase_accent_color()))
+	if tutorial_controller != null and tutorial_controller.overlay != null:
+		tutorial_controller.overlay.set_accessibility(current_text_scale(), high_contrast_enabled())
+	if not scenario.is_empty():
+		refresh_all()
+
+func apply_control_preferences(node: Node) -> void:
+	if node is Control:
+		var control: Control = node as Control
+		if control.has_meta("base_font_size"):
+			control.add_theme_font_size_override("font_size", roundi(float(int(control.get_meta("base_font_size"))) * current_text_scale()))
+		if control.has_meta("base_font_color"):
+			control.add_theme_color_override("font_color", accessible_color(control.get_meta("base_font_color") as Color))
+		if control is Button and bool(control.get_meta("storm_button", false)):
+			apply_button_style(control as Button)
+	for child: Node in node.get_children():
+		apply_control_preferences(child)
+
+func save_progress(show_feedback: bool = true) -> void:
+	if phase == Phase.FINAL_REPORT:
+		if show_feedback:
+			show_action_feedback("Completed weeks have no resumable save", COLOR_MUTED)
+		return
+	var save_error: Error = SESSION_SAVE_SCRIPT.write(build_save_state(), save_path) as Error
+	if save_error == OK:
+		if show_feedback:
+			show_action_feedback("Progress saved locally", COLOR_ACCENT)
+	else:
+		push_error("Manual session save failed with error %d at %s." % [save_error, save_path])
+		if show_feedback:
+			show_action_feedback("Save failed — check the error log", Color("e28a94"))
+
+func show_quit_confirmation(save_first: bool) -> void:
+	var title_text: String = "SAVE AND QUIT?" if save_first else "QUIT TO DESKTOP?"
+	var body_text: String = "Storm Desk will write the current resumable state, then close." if save_first else "Storm Desk will close without another manual write. Completed actions and phase changes are already protected by autosave."
+	show_modal(title_text, body_text, "Save and quit" if save_first else "Quit", quit_game.bind(save_first), "Cancel", show_settings)
+
+func quit_game(save_first: bool) -> void:
+	if save_first:
+		save_progress(false)
+	quit_was_requested = true
+	if quitting_enabled:
+		get_tree().quit(0)
+
+func wire_focus_cycle(controls: Array[Control]) -> void:
+	if controls.is_empty():
+		return
+	for index: int in controls.size():
+		var control: Control = controls[index]
+		var previous: Control = controls[(index - 1 + controls.size()) % controls.size()]
+		var next: Control = controls[(index + 1) % controls.size()]
+		control.focus_neighbor_top = previous.get_path()
+		control.focus_neighbor_left = previous.get_path()
+		control.focus_previous = previous.get_path()
+		control.focus_neighbor_bottom = next.get_path()
+		control.focus_neighbor_right = next.get_path()
+		control.focus_next = next.get_path()
 
 func show_help() -> void:
 	var lines: Array[String] = []
@@ -1047,17 +1237,18 @@ func tutorial_target(target_id: StringName) -> Control:
 
 func show_modal(title_text: String, body_text: String, primary_text: String, primary_action: Callable, secondary_text: String = "", secondary_action: Callable = Callable()) -> void:
 	clear_children(modal_layer)
+	modal_kind = &"generic"
 	modal_layer.mouse_filter = Control.MOUSE_FILTER_STOP
-	modal_layer.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	modal_layer.modulate = Color.WHITE if reduced_motion_enabled() else Color(1.0, 1.0, 1.0, 0.0)
 	var scrim := ColorRect.new()
-	scrim.color = Color(0.02, 0.04, 0.07, 0.82)
+	scrim.color = Color(0.005, 0.01, 0.018, 0.9) if high_contrast_enabled() else Color(0.02, 0.04, 0.07, 0.82)
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal_layer.add_child(scrim)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal_layer.add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(800, 430)
+	panel.custom_minimum_size = Vector2(860, 470) if current_text_scale() > 1.0 else Vector2(800, 430)
 	panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL_ALT, 14, 22))
 	center.add_child(panel)
 	var box := VBoxContainer.new()
@@ -1070,12 +1261,13 @@ func show_modal(title_text: String, body_text: String, primary_text: String, pri
 	box.add_child(scroll)
 	var body := make_label(body_text, 16, COLOR_TEXT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size.x = 720
+	body.custom_minimum_size.x = 770 if current_text_scale() > 1.0 else 720
 	scroll.add_child(body)
 	var actions := HBoxContainer.new()
 	actions.alignment = BoxContainer.ALIGNMENT_END
 	actions.add_theme_constant_override("separation", 10)
 	box.add_child(actions)
+	var focus_controls: Array[Control] = []
 	if not secondary_text.is_empty():
 		var secondary := make_button(secondary_text)
 		secondary.pressed.connect(func() -> void:
@@ -1083,6 +1275,7 @@ func show_modal(title_text: String, body_text: String, primary_text: String, pri
 			secondary_action.call()
 		)
 		actions.add_child(secondary)
+		focus_controls.append(secondary)
 	var primary := make_button(primary_text)
 	primary.custom_minimum_size.x = 210
 	primary.pressed.connect(func() -> void:
@@ -1090,14 +1283,37 @@ func show_modal(title_text: String, body_text: String, primary_text: String, pri
 		primary_action.call()
 	)
 	actions.add_child(primary)
+	focus_controls.append(primary)
+	wire_focus_cycle(focus_controls)
 	primary.call_deferred("grab_focus")
-	var modal_tween: Tween = create_tween()
-	modal_tween.tween_property(modal_layer, "modulate", Color.WHITE, 0.18)
+	if not reduced_motion_enabled():
+		var modal_tween: Tween = create_tween()
+		modal_tween.tween_property(modal_layer, "modulate", Color.WHITE, 0.18)
 
 func close_modal() -> void:
 	clear_children(modal_layer)
+	modal_kind = &""
 	modal_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	modal_layer.modulate = Color.WHITE
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not event is InputEventKey:
+		return
+	var key_event: InputEventKey = event as InputEventKey
+	if not key_event.pressed or key_event.echo:
+		return
+	if key_event.ctrl_pressed and key_event.keycode == KEY_S:
+		save_progress()
+		get_viewport().set_input_as_handled()
+		return
+	if key_event.keycode == KEY_F1 and modal_kind == &"":
+		show_settings()
+		get_viewport().set_input_as_handled()
+		return
+	if key_event.keycode == KEY_ESCAPE and modal_kind == &"settings":
+		close_modal()
+		help_button.grab_focus()
+		get_viewport().set_input_as_handled()
 
 func log_event(message: String) -> void:
 	if event_log.text.is_empty():
@@ -1122,7 +1338,7 @@ func refresh_district_markers() -> void:
 		var border: Color = COLOR_WARNING if warned else outcome_color if not outcome.is_empty() else COLOR_ACCENT if selected else Color("40576a")
 		var background: Color = Color("3b352d") if warned else Color(border, 0.16) if not outcome.is_empty() else Color("213a46") if selected else Color("17222d")
 		button.add_theme_stylebox_override("normal", bordered_panel_style(background, border, 5, 10, 2 if warned or selected or not outcome.is_empty() else 1))
-		button.add_theme_color_override("font_color", border if warned or not outcome.is_empty() else COLOR_TEXT)
+		button.add_theme_color_override("font_color", accessible_color(border if warned or not outcome.is_empty() else COLOR_TEXT))
 
 func record_district_outcomes() -> void:
 	district_outcomes.clear()
@@ -1139,7 +1355,7 @@ func refresh_warning_summary() -> void:
 		return
 	if selected_hazard == &"":
 		warning_summary_label.text = "STAND DOWN  •  No warning will be issued."
-		warning_summary_label.add_theme_color_override("font_color", COLOR_MUTED)
+		warning_summary_label.add_theme_color_override("font_color", accessible_color(COLOR_MUTED))
 		return
 	var district_names: Array[String] = []
 	for district: DistrictDefinition in districts:
@@ -1148,7 +1364,7 @@ func refresh_warning_summary() -> void:
 	var hazard: HazardDefinition = hazard_by_id(selected_hazard)
 	var targets: String = ", ".join(district_names) if not district_names.is_empty() else "NO DISTRICTS MARKED"
 	warning_summary_label.text = "DRAFT  •  %s LEVEL %d  •  %s" % [hazard.display_name.to_upper(), selected_severity, targets]
-	warning_summary_label.add_theme_color_override("font_color", COLOR_ACCENT if not district_names.is_empty() else COLOR_WARNING)
+	warning_summary_label.add_theme_color_override("font_color", accessible_color(COLOR_ACCENT if not district_names.is_empty() else COLOR_WARNING))
 
 func daily_verdict(result: Dictionary) -> String:
 	if bool(result["correct_hazard"]) and int(result["missed"]) == 0 and int(result["false_warnings"]) == 0:
@@ -1161,18 +1377,26 @@ func daily_verdict(result: Dictionary) -> String:
 
 func show_action_feedback(message: String, color: Color) -> void:
 	action_feedback_label.text = message
-	action_feedback_label.add_theme_color_override("font_color", color)
+	action_feedback_label.add_theme_color_override("font_color", accessible_color(color))
+	if reduced_motion_enabled():
+		action_feedback_label.modulate = Color.WHITE
+		return
 	action_feedback_label.modulate = Color(1.0, 1.0, 1.0, 0.45)
 	var feedback_tween: Tween = create_tween()
 	feedback_tween.tween_property(action_feedback_label, "modulate", Color.WHITE, 0.16)
 
 func pulse_resource_label(label: Label, color: Color) -> void:
-	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_color", accessible_color(color))
+	if reduced_motion_enabled():
+		return
 	var pulse_tween: Tween = create_tween()
 	pulse_tween.tween_interval(0.35)
-	pulse_tween.tween_callback(func() -> void: label.add_theme_color_override("font_color", COLOR_TEXT))
+	pulse_tween.tween_callback(func() -> void: label.add_theme_color_override("font_color", accessible_color(COLOR_TEXT)))
 
 func animate_phase_transition() -> void:
+	if reduced_motion_enabled():
+		status_panel.modulate = Color.WHITE
+		return
 	status_panel.modulate = Color(1.0, 1.0, 1.0, 0.55)
 	var phase_tween: Tween = create_tween()
 	phase_tween.tween_property(status_panel, "modulate", Color.WHITE, 0.20)
@@ -1233,8 +1457,9 @@ func hazard_by_id(id: StringName) -> HazardDefinition:
 func make_label(text_value: String, size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text_value
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", color)
+	set_scaled_font_size(label, size)
+	label.set_meta("base_font_color", color)
+	label.add_theme_color_override("font_color", accessible_color(color))
 	return label
 
 func make_wrapped_label(text_value: String, size: int, color: Color) -> Label:
@@ -1246,25 +1471,64 @@ func make_wrapped_label(text_value: String, size: int, color: Color) -> Label:
 func make_button(text_value: String) -> Button:
 	var button := Button.new()
 	button.text = text_value
-	button.add_theme_font_size_override("font_size", 15)
+	button.set_meta("storm_button", true)
+	set_scaled_font_size(button, 15)
 	button.focus_mode = Control.FOCUS_ALL
-	button.add_theme_stylebox_override("normal", bordered_panel_style(Color("17222d"), Color("40576a"), 5, 9))
-	button.add_theme_stylebox_override("hover", bordered_panel_style(Color("263c49"), COLOR_ACCENT, 5, 9, 2))
-	button.add_theme_stylebox_override("pressed", bordered_panel_style(Color("2c403c"), COLOR_WARNING, 5, 9, 2))
-	button.add_theme_stylebox_override("focus", bordered_panel_style(Color(0.0, 0.0, 0.0, 0.0), COLOR_WARNING, 5, 7, 2))
-	button.add_theme_stylebox_override("disabled", bordered_panel_style(Color("121b24"), Color("334451"), 5, 9))
-	button.add_theme_color_override("font_disabled_color", Color("718392"))
+	apply_button_style(button)
 	return button
+
+func set_scaled_font_size(control: Control, base_size: int) -> void:
+	control.set_meta("base_font_size", base_size)
+	control.add_theme_font_size_override("font_size", roundi(float(base_size) * current_text_scale()))
+
+func current_text_scale() -> float:
+	if user_settings == null:
+		return 1.0
+	return float(user_settings.call("text_scale"))
+
+func reduced_motion_enabled() -> bool:
+	return user_settings != null and bool(user_settings.get("reduced_motion"))
+
+func high_contrast_enabled() -> bool:
+	return user_settings != null and bool(user_settings.get("high_contrast"))
+
+func accessible_color(color: Color) -> Color:
+	if not high_contrast_enabled():
+		return color
+	if color == COLOR_TEXT:
+		return Color.WHITE
+	if color == COLOR_MUTED or color == Color("718392"):
+		return Color("d8e4ec")
+	if color == COLOR_ACCENT:
+		return Color("67fff0")
+	if color == COLOR_WARNING:
+		return Color("ffd166")
+	if color == Color("e28a94"):
+		return Color("ff8da1")
+	return color.lightened(0.16) if color.get_luminance() < 0.55 else color
+
+func accessible_panel_color(color: Color) -> Color:
+	if not high_contrast_enabled() or color.a < 0.05:
+		return color
+	return Color(color.r * 0.48, color.g * 0.48, color.b * 0.48, color.a)
+
+func apply_button_style(button: Button) -> void:
+	button.add_theme_stylebox_override("normal", bordered_panel_style(Color("17222d"), Color("40576a"), 5, 9, 2 if high_contrast_enabled() else 1))
+	button.add_theme_stylebox_override("hover", bordered_panel_style(Color("263c49"), COLOR_ACCENT, 5, 9, 3 if high_contrast_enabled() else 2))
+	button.add_theme_stylebox_override("pressed", bordered_panel_style(Color("2c403c"), COLOR_WARNING, 5, 9, 3 if high_contrast_enabled() else 2))
+	button.add_theme_stylebox_override("focus", bordered_panel_style(Color(0.0, 0.0, 0.0, 0.0), COLOR_WARNING, 5, 7, 3 if high_contrast_enabled() else 2))
+	button.add_theme_stylebox_override("disabled", bordered_panel_style(Color("121b24"), Color("334451"), 5, 9))
+	button.add_theme_color_override("font_disabled_color", accessible_color(Color("718392")))
 
 func bordered_panel_style(color: Color, border_color: Color, radius: int, padding: int = 12, border_width: int = 1) -> StyleBoxFlat:
 	var style: StyleBoxFlat = panel_style(color, radius, padding)
-	style.border_color = border_color
+	style.border_color = accessible_color(border_color)
 	style.set_border_width_all(border_width)
 	return style
 
 func panel_style(color: Color, radius: int, padding: int = 12) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = color
+	style.bg_color = accessible_panel_color(color)
 	style.corner_radius_top_left = radius
 	style.corner_radius_top_right = radius
 	style.corner_radius_bottom_left = radius

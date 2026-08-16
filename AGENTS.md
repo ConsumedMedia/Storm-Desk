@@ -18,6 +18,8 @@ This repository contains the playable Storm Desk five-day Godot 4.7.x prototype.
 - Do not hide action failures. Disable invalid actions and log an explanation when guard code rejects one.
 - Avoid autoloads unless a durable cross-scene need exists and document any added autoload in `docs/ARCHITECTURE.md`.
 - Keep session persistence versioned and local through `SessionSave`. Save authored IDs and transient state, reload scenario truth from `ScenarioCatalog`, validate before mutation, and keep tests/captures on isolated `user://` paths.
+- Keep accessibility preferences in the `UserSettings` section of `user://settings.cfg` without overwriting onboarding state. Reduced motion must disable nonessential movement/tweens; high contrast must retain text labels; larger text must remain in bounds at 1280×720.
+- Preserve keyboard access to Settings, modals, phase progression, network site selection, and warning controls. Every modal action set must have an explicit focus cycle and primary focus.
 
 ## Scope restrictions
 

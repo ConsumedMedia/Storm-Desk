@@ -18,7 +18,10 @@ var title_label: Label
 var progress_label: Label
 var body_label: Label
 var instruction_label: Label
+var skip_button: Button
 var informational: bool = true
+var text_scale: float = 1.0
+var high_contrast: bool = false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -95,11 +98,38 @@ func build_popup() -> void:
 	var actions := HBoxContainer.new()
 	actions.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(actions)
-	var skip_button := Button.new()
+	skip_button = Button.new()
 	skip_button.text = "Skip guided tour"
 	skip_button.add_theme_font_size_override("font_size", 14)
 	skip_button.pressed.connect(func() -> void: skip_requested.emit())
 	actions.add_child(skip_button)
+
+func set_accessibility(scale_value: float, use_high_contrast: bool) -> void:
+	text_scale = scale_value
+	high_contrast = use_high_contrast
+	if not is_node_ready():
+		return
+	focus_label.add_theme_font_size_override("font_size", roundi(12.0 * text_scale))
+	title_label.add_theme_font_size_override("font_size", roundi(20.0 * text_scale))
+	progress_label.add_theme_font_size_override("font_size", roundi(13.0 * text_scale))
+	body_label.add_theme_font_size_override("font_size", roundi(16.0 * text_scale))
+	instruction_label.add_theme_font_size_override("font_size", roundi(14.0 * text_scale))
+	skip_button.add_theme_font_size_override("font_size", roundi(14.0 * text_scale))
+	body_label.custom_minimum_size.x = 380.0 if text_scale > 1.0 else 340.0
+	popup.custom_minimum_size.x = 420.0 if text_scale > 1.0 else 380.0
+	var popup_style := StyleBoxFlat.new()
+	popup_style.bg_color = Color("07111c") if high_contrast else PANEL_COLOR
+	popup_style.border_color = Color("67fff0") if high_contrast else Color("55c2b5")
+	popup_style.set_border_width_all(3 if high_contrast else 2)
+	popup_style.set_corner_radius_all(10)
+	popup_style.set_content_margin_all(16)
+	popup.add_theme_stylebox_override("panel", popup_style)
+	for dimmer: ColorRect in dimmers:
+		dimmer.color = Color(0.005, 0.01, 0.018, 0.88) if high_contrast else DIM_COLOR
+	title_label.add_theme_color_override("font_color", Color("67fff0") if high_contrast else Color("55c2b5"))
+	body_label.add_theme_color_override("font_color", Color.WHITE if high_contrast else Color("eaf1f5"))
+	progress_label.add_theme_color_override("font_color", Color("d8e4ec") if high_contrast else Color("aebfca"))
+	update_layout()
 
 func present(target_control: Control, title_text: String, body_text: String, progress_text: String, is_informational: bool) -> void:
 	target = target_control
@@ -112,6 +142,10 @@ func present(target_control: Control, title_text: String, body_text: String, pro
 	show()
 	move_to_front()
 	update_layout()
+	if informational:
+		target_catcher.grab_focus()
+	else:
+		target.grab_focus()
 
 func dismiss() -> void:
 	target = null
@@ -143,7 +177,7 @@ func update_layout() -> void:
 
 func position_popup(hole: Rect2, viewport_size: Vector2) -> void:
 	var popup_size: Vector2 = popup.get_combined_minimum_size()
-	popup_size.x = maxf(380.0, popup_size.x)
+	popup_size.x = maxf(420.0 if text_scale > 1.0 else 380.0, popup_size.x)
 	popup.size = popup_size
 	var gap: float = 14.0
 	var desired: Vector2

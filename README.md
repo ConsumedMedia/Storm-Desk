@@ -20,7 +20,7 @@ Progress autosaves locally after completed actions and phase changes. If an unfi
 
 ## How to play
 
-1. Read the morning briefing and open Rules / Help for the three learnable hazard patterns.
+1. Read the morning briefing and open Settings → Rules / Help for the three learnable hazard patterns.
 2. On the first run, start or skip the guided tour. It highlights the current focus area and requires the relevant interface action before advancing.
 3. Select district map cards to review vulnerabilities.
 4. Inspect each instrument value and its quality tag.
@@ -31,6 +31,8 @@ Progress autosaves locally after completed actions and phase changes. If an unfi
 9. Begin the next briefing. After Day Five, review the first-week report or restart without closing the application.
 
 Mouse and keyboard focus navigation are supported by standard Godot Controls. The interface does not rely on color alone: phases, qualities, disabled actions, and warnings are labeled in text.
+
+Press `F1` to open Settings, `Escape` to close Settings, and `Ctrl+S` to save progress. Settings provides reduced motion, 115% larger text, high-contrast/color assistance, Rules / Help, guided-tour replay, Save Progress, Save & Quit, and Quit to Desktop.
 
 ## Current prototype scope
 
@@ -50,6 +52,8 @@ Mouse and keyboard focus navigation are supported by standard Godot Controls. Th
 - Trust, budget, damage, vulnerability, observation, warning-operation, and repair calculations
 - Daily evidence explanations, calculation breakdowns, final summary, and in-app restart
 - Versioned local autosave and resume for the complete session, including revealed evidence, warning drafts, reports, maintenance limits, outages, and network equipment health
+- Persistent accessibility settings for reduced motion, larger interface text, and high-contrast/color-assisted presentation
+- One keyboard-accessible Settings menu combining preferences, Rules / Help, tour replay, manual save, Save & Quit, and Quit to Desktop
 - Code-drawn atmospheric backdrop, phase-colored status, resource feedback, accessible network legend, warning/protected/missed district markers, and assessment-led reports
 - Local placeholder interface made only from Godot Controls, draw calls, and built-in fonts
 
@@ -63,9 +67,9 @@ Run the repository-native checks without installing a test framework:
 godot --headless --path . --script res://tests/run_tests.gd
 ```
 
-The suite validates save creation, corrupt/version/state rejection, network snapshot round-trips, launch prompting, exact mid-day restoration, save clearing, scenario-resource loading and malformed-content rejection, hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, network behavior, warning feedback, guided-tour progression, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-16 passed 98 checks with exit code 0 under Godot 4.7.1.
+The suite validates persistent accessibility preferences, tutorial-setting preservation, reduced motion, large-text scaling, high contrast, keyboard Settings flow, manual save and quit requests, save creation/corruption/version handling, exact mid-day restoration, scenario validation, simulation and network behavior, guided-tour progression, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-16 passed 110 checks with exit code 0 under Godot 4.7.1.
 
-Six graphics-backed visual-QA helpers cover the dense Day Four recovery screen, first overnight desk, warning draft, daily result, guided onboarding, and resume prompt. Run `tests/capture_ui.gd`, `tests/capture_maintenance.gd`, `tests/capture_warning.gd`, `tests/capture_result.gd`, `tests/capture_tutorial.gd`, and `tests/capture_resume.gd` with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical states and bounds.
+Eight graphics-backed visual-QA helpers cover the dense Day Four recovery screen, first overnight desk, warning draft, daily result, guided onboarding, resume prompt, combined Settings menu, and large-text/high-contrast gameplay. Run the `tests/capture_*.gd` scripts with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical states and bounds.
 
 ## Repository structure
 
@@ -83,4 +87,4 @@ Six graphics-backed visual-QA helpers cover the dense Day Four recovery screen, 
 - The district map remains a structured board; network construction uses a fixed-node graph rather than free placement or terrain simulation.
 - The UI is tuned for a 1280×720 reference window; very small windows are not a target.
 - Audio, full production animation, final art, accessibility narration, and localization are deferred.
-- Guided-tour completion remains a separate preference in `user://settings.cfg`. The active first week is stored in `user://storm_desk_session.cfg`; finished weeks are not retained as history.
+- Guided-tour completion and accessibility preferences share separate sections in `user://settings.cfg`. The active first week is stored in `user://storm_desk_session.cfg`; finished weeks are not retained as history.

@@ -1,6 +1,7 @@
 extends SceneTree
 
 const SAVE_PATH: String = "user://storm_desk_capture_resume.cfg"
+const SETTINGS_PATH: String = "user://storm_desk_capture_resume_settings.cfg"
 
 var frame_count: int = 0
 
@@ -9,12 +10,15 @@ func _init() -> void:
 	var packed: PackedScene = load("res://scenes/main/main.tscn") as PackedScene
 	var seed_main: Node = packed.instantiate()
 	seed_main.set("save_path", SAVE_PATH)
+	seed_main.set("settings_path", SETTINGS_PATH)
 	root.add_child(seed_main)
 
 func remove_test_save() -> void:
 	var absolute_path: String = ProjectSettings.globalize_path(SAVE_PATH)
 	if FileAccess.file_exists(SAVE_PATH):
 		DirAccess.remove_absolute(absolute_path)
+	if FileAccess.file_exists(SETTINGS_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
 
 func _process(_delta: float) -> bool:
 	frame_count += 1
@@ -28,6 +32,7 @@ func _process(_delta: float) -> bool:
 		var packed: PackedScene = load("res://scenes/main/main.tscn") as PackedScene
 		var resumed_main: Node = packed.instantiate()
 		resumed_main.set("save_path", SAVE_PATH)
+		resumed_main.set("settings_path", SETTINGS_PATH)
 		root.add_child(resumed_main)
 	if frame_count < 10:
 		return false

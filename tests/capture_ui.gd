@@ -1,6 +1,7 @@
 extends SceneTree
 
 const SAVE_PATH: String = "user://storm_desk_capture_ui.cfg"
+const SETTINGS_PATH: String = "user://storm_desk_capture_ui_settings.cfg"
 
 var frame_count: int = 0
 
@@ -9,12 +10,15 @@ func _init() -> void:
 	remove_test_save()
 	var main: Node = packed.instantiate()
 	main.set("save_path", SAVE_PATH)
+	main.set("settings_path", SETTINGS_PATH)
 	root.add_child(main)
 
 func remove_test_save() -> void:
 	var absolute_path: String = ProjectSettings.globalize_path(SAVE_PATH)
 	if FileAccess.file_exists(SAVE_PATH):
 		DirAccess.remove_absolute(absolute_path)
+	if FileAccess.file_exists(SETTINGS_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
 
 func _process(_delta: float) -> bool:
 	frame_count += 1

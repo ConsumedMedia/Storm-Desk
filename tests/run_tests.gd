@@ -1,8 +1,11 @@
 extends SceneTree
 
 const SESSION_SAVE_SCRIPT: Script = preload("res://scripts/simulation/session_save.gd")
+const USER_SETTINGS_SCRIPT: Script = preload("res://scripts/ui/user_settings.gd")
 const MAIN_TEST_SAVE_PATH: String = "user://storm_desk_main_test.cfg"
+const MAIN_TEST_SETTINGS_PATH: String = "user://storm_desk_main_settings_test.cfg"
 const INVALID_TEST_SAVE_PATH: String = "user://storm_desk_invalid_test.cfg"
+const PREFERENCES_TEST_PATH: String = "user://storm_desk_preferences_test.cfg"
 
 var failures: int = 0
 var checks: int = 0
@@ -14,6 +17,25 @@ func run_all() -> void:
 	var hazards: Array[HazardDefinition] = ScenarioCatalog.hazards()
 	var districts: Array[DistrictDefinition] = ScenarioCatalog.districts()
 	var days: Array[Dictionary] = ScenarioCatalog.days()
+	remove_file_if_present(PREFERENCES_TEST_PATH)
+	var onboarding_config := ConfigFile.new()
+	onboarding_config.set_value("onboarding", "completed", true)
+	onboarding_config.save(PREFERENCES_TEST_PATH)
+	var preferences: RefCounted = USER_SETTINGS_SCRIPT.new() as RefCounted
+	preferences.set("config_path", PREFERENCES_TEST_PATH)
+	preferences.call("load_preferences")
+	preferences.set("reduced_motion", true)
+	preferences.set("large_text", true)
+	preferences.set("high_contrast", true)
+	check(int(preferences.call("save_preferences")) == OK, "Accessibility preferences save through the shared local settings file")
+	var reloaded_preferences: RefCounted = USER_SETTINGS_SCRIPT.new() as RefCounted
+	reloaded_preferences.set("config_path", PREFERENCES_TEST_PATH)
+	reloaded_preferences.call("load_preferences")
+	check(bool(reloaded_preferences.get("reduced_motion")) and bool(reloaded_preferences.get("large_text")) and bool(reloaded_preferences.get("high_contrast")), "Reduced motion, larger text, and high contrast persist across loads")
+	var preserved_config := ConfigFile.new()
+	preserved_config.load(PREFERENCES_TEST_PATH)
+	check(bool(preserved_config.get_value("onboarding", "completed", false)), "Accessibility saves preserve the guided-tour preference section")
+	remove_file_if_present(PREFERENCES_TEST_PATH)
 	var scenario_definitions: Array[Resource] = ScenarioCatalog.scenario_definitions()
 	check(scenario_definitions.size() == 5, "Five Inspector-editable scenario resources load from the catalog")
 	check(ScenarioCatalog.validation_errors(scenario_definitions).is_empty(), "Authored scenario resources pass schema and reference validation")
@@ -132,8 +154,50 @@ func run_all() -> void:
 	var main_scene: PackedScene = load("res://scenes/main/main.tscn") as PackedScene
 	var main: Control = main_scene.instantiate() as Control
 	SESSION_SAVE_SCRIPT.delete(MAIN_TEST_SAVE_PATH)
+	remove_file_if_present(MAIN_TEST_SETTINGS_PATH)
 	main.set("save_path", MAIN_TEST_SAVE_PATH)
+	main.set("settings_path", MAIN_TEST_SETTINGS_PATH)
+	main.set("quitting_enabled", false)
 	root.add_child(main)
+	main.call("close_modal")
+	var f1_event := InputEventKey.new()
+	f1_event.keycode = KEY_F1
+	f1_event.pressed = true
+	main.call("_unhandled_key_input", f1_event)
+	var settings_modal: Node = main.get("modal_layer") as Node
+	check(node_contains_control_text(settings_modal, "SETTINGS") and node_contains_control_text(settings_modal, "Save Progress") and node_contains_control_text(settings_modal, "Save & Quit") and node_contains_control_text(settings_modal, "Quit to Desktop"), "F1 opens one Settings menu containing accessibility, save, and quit controls")
+	var escape_event := InputEventKey.new()
+	escape_event.keycode = KEY_ESCAPE
+	escape_event.pressed = true
+	main.call("_unhandled_key_input", escape_event)
+	check(StringName(main.get("modal_kind")) == &"" and (main.get("help_button") as Button).has_focus(), "Escape closes Settings and restores keyboard focus to its header button")
+	main.call("update_accessibility_setting", true, &"reduced_motion")
+	main.call("update_accessibility_setting", true, &"large_text")
+	main.call("update_accessibility_setting", true, &"high_contrast")
+	var settings_model: RefCounted = main.get("user_settings") as RefCounted
+	var atmosphere: Control = main.get("atmosphere") as Control
+	var saved_preferences: RefCounted = USER_SETTINGS_SCRIPT.new() as RefCounted
+	saved_preferences.set("config_path", MAIN_TEST_SETTINGS_PATH)
+	saved_preferences.call("load_preferences")
+	check(not atmosphere.is_processing() and bool(atmosphere.get("high_contrast")), "Reduced motion pauses atmosphere animation while high contrast updates its palette")
+	check((main.get("day_label") as Label).get_theme_font_size("font_size") > 16 and is_equal_approx(float(settings_model.call("text_scale")), 1.15), "Larger text applies a controlled 115 percent interface scale")
+	var tutorial_overlay: TutorialOverlay = (main.get("tutorial_controller") as TutorialController).overlay
+	check((tutorial_overlay.get("title_label") as Label).get_theme_font_size("font_size") > 20, "Larger text also scales guided-tour content")
+	check(bool(saved_preferences.get("reduced_motion")) and bool(saved_preferences.get("large_text")) and bool(saved_preferences.get("high_contrast")), "Settings changes persist immediately to the configured preferences file")
+	main.call("show_action_feedback", "Reduced motion check", Color.WHITE)
+	check((main.get("action_feedback_label") as Label).modulate == Color.WHITE, "Reduced motion presents feedback without a fade tween")
+	var save_key_event := InputEventKey.new()
+	save_key_event.keycode = KEY_S
+	save_key_event.ctrl_pressed = true
+	save_key_event.pressed = true
+	main.call("_unhandled_key_input", save_key_event)
+	check(SESSION_SAVE_SCRIPT.exists(MAIN_TEST_SAVE_PATH) and (main.get("action_feedback_label") as Label).text.contains("saved locally"), "Ctrl+S and Save Progress share the resumable-session write path")
+	main.set("quit_was_requested", false)
+	main.call("quit_game", true)
+	check(bool(main.get("quit_was_requested")) and SESSION_SAVE_SCRIPT.exists(MAIN_TEST_SAVE_PATH), "Save and Quit writes progress before issuing a desktop quit request")
+	main.call("update_accessibility_setting", false, &"reduced_motion")
+	main.call("update_accessibility_setting", false, &"large_text")
+	main.call("update_accessibility_setting", false, &"high_contrast")
 	var initial_save_result: Dictionary = SESSION_SAVE_SCRIPT.read(MAIN_TEST_SAVE_PATH) as Dictionary
 	check(bool(initial_save_result.get("ok", false)), "Starting a new first week creates a local autosave")
 	var incompatible_config := ConfigFile.new()
@@ -175,7 +239,7 @@ func run_all() -> void:
 	var warning_summary: Label = main.get("warning_summary_label") as Label
 	check(warning_summary.text.contains("SPARKSTORM") and warning_summary.text.contains("Industrial"), "Warning desk presents a live hazard and district summary")
 	var feedback_label: Label = main.get("action_feedback_label") as Label
-	check(feedback_label.text.contains("Added warning marker"), "Footer provides immediate warning-selection feedback")
+	check(feedback_label.text.contains("Warning added"), "Footer provides immediate warning-selection feedback")
 	var draft_save_result: Dictionary = SESSION_SAVE_SCRIPT.read(MAIN_TEST_SAVE_PATH) as Dictionary
 	var draft_save_state: Dictionary = draft_save_result.get("state", {}) as Dictionary
 	check(StringName(draft_save_state.get("selected_hazard", &"")) == &"sparkstorm" and (draft_save_state.get("warned_districts", []) as Array).has(&"industrial"), "Autosave records the editable warning draft")
@@ -333,6 +397,8 @@ func run_all() -> void:
 	main.queue_free()
 	SESSION_SAVE_SCRIPT.delete(MAIN_TEST_SAVE_PATH)
 	SESSION_SAVE_SCRIPT.delete(INVALID_TEST_SAVE_PATH)
+	remove_file_if_present(MAIN_TEST_SETTINGS_PATH)
+	remove_file_if_present(PREFERENCES_TEST_PATH)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -361,6 +427,16 @@ func node_contains_text(node: Node, expected: String) -> bool:
 			return true
 	return false
 
+func node_contains_control_text(node: Node, expected: String) -> bool:
+	if node is Label and (node as Label).text.contains(expected):
+		return true
+	if node is Button and (node as Button).text.contains(expected):
+		return true
+	for child: Node in node.get_children():
+		if node_contains_control_text(child, expected):
+			return true
+	return false
+
 func duplicate_resources(resources: Array[Resource]) -> Array[Resource]:
 	var result: Array[Resource] = []
 	for resource: Resource in resources:
@@ -372,6 +448,10 @@ func errors_contain(errors: Array[String], expected: String) -> bool:
 		if error.contains(expected):
 			return true
 	return false
+
+func remove_file_if_present(path: String) -> void:
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 func check(condition: bool, description: String) -> void:
 	checks += 1

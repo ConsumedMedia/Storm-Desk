@@ -37,7 +37,7 @@ func build_steps() -> Array[Dictionary]:
 		{"target": &"header", "title": "Bureau Status", "body": "This header always shows the current day, budget, public trust, and remaining action capacity.", "mode": &"info"},
 		{"target": &"district_map", "title": "Know the Districts", "body": "Select any district card to inspect its hazard vulnerabilities and preparation needs.", "mode": &"district"},
 		{"target": &"readings", "title": "Read the Evidence", "body": "Instrument cards report values and quality. CLEAR readings are dependable; MISSING, IMPRECISE, and SUSPECT readings require judgment.", "mode": &"info"},
-		{"target": &"help", "title": "Weather Rules", "body": "Rules / Help contains the three fictional evidence patterns. You can also replay this guided tour from there.", "mode": &"info"},
+		{"target": &"help", "title": "Settings and Help", "body": "Settings contains accessibility controls, weather rules, tour replay, save, and quit actions.", "mode": &"info"},
 		{"target": &"event_log", "title": "Operations Log", "body": "The log confirms selections, network actions, rejected actions, and newly delivered readings.", "mode": &"info"},
 		{"target": &"continue", "title": "Advance the Phase", "body": "Use the primary footer button when you have finished the current phase. Move into Network Planning now.", "mode": &"phase", "phase": 2},
 		{"target": &"network", "title": "Plan the Network", "body": "During a forecast day, inspect relay paths, collect connected readings, or commission surveys here. Installations and repairs happen during overnight maintenance after each report.", "mode": &"info"},

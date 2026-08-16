@@ -20,12 +20,13 @@ Last updated: 2026-08-16
 - Added an interface feedback and atmosphere pass: code-drawn weather motion, phase accents, resource pulses, accessible network states, warning/result district markers, draft summaries, assessment-led reports, explicit button focus styling, and keyboard-focused modals.
 - Added a scenario-authoring system with five Inspector-editable day Resources, deterministic catalog conversion, and descriptive validation for ordering, references, nested records, timing, and evidence consistency.
 - Added a versioned local autosave/resume system for complete coordinator and network state, launch-time Resume/Start New choice, corrupt/incompatible-save rejection, and completion cleanup.
-- Expanded to 98 dependency-free automated checks plus six graphics-backed 1280×720 regression captures covering Day Four, maintenance, warnings, results, onboarding, and resume choice.
+- Added a combined Settings surface with persistent reduced motion, 115% larger text, high-contrast/color assistance, help and guided-tour access, manual save, Save & Quit, Quit to Desktop, keyboard shortcuts, and modal focus cycles.
+- Expanded to 110 dependency-free automated checks plus eight graphics-backed 1280×720 regression captures covering Day Four, maintenance, warnings, results, onboarding, resume choice, Settings, and accessible gameplay.
 - Added actual implementation documentation.
 
 ## Current work
 
-The contained first-week, between-day maintenance, interface feedback, scenario-authoring/validation, and save/resume milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
+The contained first-week, between-day maintenance, interface feedback, scenario-authoring/validation, save/resume, and accessibility/settings milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
 
 ## Remaining milestones
 
