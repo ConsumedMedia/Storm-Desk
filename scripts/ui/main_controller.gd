@@ -154,8 +154,12 @@ func build_map_panel() -> Control:
 		box.add_child(button)
 	district_detail = make_label("Select a district for vulnerability details.", 14, COLOR_MUTED)
 	district_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	district_detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(district_detail)
+	district_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var detail_scroll := ScrollContainer.new()
+	detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	detail_scroll.add_child(district_detail)
+	box.add_child(detail_scroll)
 	return panel
 
 func build_readings_panel() -> Control:
@@ -327,14 +331,14 @@ func refresh_readings() -> void:
 func refresh_network_actions() -> void:
 	clear_children(network_box)
 	if phase == Phase.OBSERVATION:
-		network_box.add_child(make_label("Network controls unlock after the initial instrument review.", 15, COLOR_MUTED))
+		network_box.add_child(make_wrapped_label("Network controls unlock after the initial instrument review.", 15, COLOR_MUTED))
 		return
 	var actions: Array = scenario.get("actions", []) as Array
 	if actions.is_empty():
-		network_box.add_child(make_label("No remote request is needed today. All essential evidence is already available.", 15, COLOR_MUTED))
+		network_box.add_child(make_wrapped_label("No remote request is needed today. All essential evidence is already available.", 15, COLOR_MUTED))
 		return
 	var capacity: int = int(scenario["capacity"])
-	network_box.add_child(make_label("Each request uses 1 capacity and delays warning preparation.", 15, COLOR_MUTED))
+	network_box.add_child(make_wrapped_label("Each request uses 1 capacity and delays warning preparation.", 15, COLOR_MUTED))
 	for action: Dictionary in actions:
 		var button := make_button("%s  —  cost %d" % [str(action["label"]), int(action["cost"])])
 		button.disabled = phase != Phase.NETWORK_PLANNING or observations_used >= capacity or bool(action.get("used", false)) or budget < int(action["cost"])
@@ -343,7 +347,7 @@ func refresh_network_actions() -> void:
 		button.pressed.connect(request_observation.bind(action))
 		network_box.add_child(button)
 	if observations_used >= capacity:
-		network_box.add_child(make_label("CAPACITY EXHAUSTED — remaining requests are unavailable.", 14, COLOR_WARNING))
+		network_box.add_child(make_wrapped_label("CAPACITY EXHAUSTED — remaining requests are unavailable.", 14, COLOR_WARNING))
 
 func request_observation(action: Dictionary) -> void:
 	if phase != Phase.NETWORK_PLANNING:
@@ -538,6 +542,12 @@ func make_label(text_value: String, size: int, color: Color) -> Label:
 	label.text = text_value
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
+	return label
+
+func make_wrapped_label(text_value: String, size: int, color: Color) -> Label:
+	var label := make_label(text_value, size, color)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return label
 
 func make_button(text_value: String) -> Button:
