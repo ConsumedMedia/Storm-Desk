@@ -1,0 +1,58 @@
+[gd_resource type="Resource" script_class="ScenarioDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/scenario_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+day = 2
+title = "A Missing Crystal Trace"
+outlook = "Dry, unstable air is approaching Farm Spire. Crystal and wind coverage may be useful, but the exact hazard remains uncertain."
+briefing = "The overnight maintenance window has closed. If you installed a Crystal Sensor at Farm Spire, today's single action can collect its reading; otherwise the High Ridge wind-history survey remains available. Two districts lie along the projected corridor."
+tutorial = "Collection day: use the prepared Farm Spire sensor or choose the wind-history survey. Daily capacity permits only one evidence action."
+hazard = &"glasswind"
+severity = 2
+threatened = Array[StringName]([&"farmland", &"harbor"])
+capacity = 1
+safe_actions = 1
+readings = Array[Dictionary]([{
+"faulty": false,
+"id": &"wind_shift",
+"instrument": "Vane Array",
+"quality": "clear",
+"supports": &"glasswind",
+"value": "Wind direction: RAPIDLY SHIFTING",
+"visible": true
+}, {
+"faulty": false,
+"id": &"humidity",
+"instrument": "Hygrometer",
+"quality": "clear",
+"supports": &"glasswind",
+"value": "Humidity: LOW",
+"visible": true
+}, {
+"faulty": false,
+"id": &"crystal",
+"instrument": "Crystal Spectrometer",
+"network_quality": "clear",
+"network_sensor": &"crystal",
+"network_site": &"farmland",
+"network_value": "Crystal density: HIGH",
+"quality": "missing",
+"supports": &"glasswind",
+"value": "Crystal density: UNAVAILABLE",
+"visible": true
+}])
+actions = Array[Dictionary]([{
+"cost": 3,
+"id": &"wind_history",
+"label": "Route wind-history survey",
+"log": "The High Ridge relay confirms that wind shifts are accelerating.",
+"quality": "clear",
+"requires_relay": &"ridge",
+"reveals": &"history",
+"supports": &"glasswind",
+"value": "Wind history: shifts accelerating"
+}])
+opening_damage = Array[Dictionary]([])
+outcome_note = "Rapid wind shifts, high crystal density, and low humidity identify Glasswind. Farmland is highly vulnerable; Harbor is moderately exposed."

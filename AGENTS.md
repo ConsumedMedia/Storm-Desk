@@ -11,7 +11,7 @@ This repository contains the playable Storm Desk five-day Godot 4.7.x prototype.
 - Keep network topology, connectivity, equipment health, and hazard damage in `NetworkModel`; the UI diagram must present that state rather than duplicate it.
 - Preserve the fixed-node scope unless the owner explicitly approves free placement, terrain routing, or a map editor.
 - Prefer composition, signals or explicit coordinator calls, small focused scripts, deterministic inputs, and data-driven content.
-- Keep hazard and district facts in custom Resources under `resources/`. Add scenario content through `ScenarioCatalog` until a concrete need justifies a different authoring format.
+- Keep hazard, district, and scenario facts in custom Resources under `resources/`. Register scenario paths in `ScenarioCatalog`, preserve its runtime Dictionary boundary, and extend `ScenarioValidator` when adding authored fields or references.
 - Preserve the explicit phase flow in `main_controller.gd`: briefing, observation, network planning, warning decision/confirmation, resolution, daily report, overnight maintenance between days, final report.
 - Keep guided-tour sequence/persistence in `TutorialController` and mask/highlight rendering in `TutorialOverlay`. Add target controls through `tutorial_target()` instead of screen coordinates.
 - Tutorial steps must never choose an answer, spend resources, or silently alter simulation state. Required gameplay actions must advance through host signals.
@@ -28,6 +28,7 @@ Do not add multiplayer, networking, accounts, external services, Steamworks, ach
 - Confirm the main scene starts without parser/runtime errors.
 - For layout changes, run the relevant graphics helpers under `tests/capture_*.gd` and inspect their `.godot/*.png` output at 1280×720. Current captures cover network planning, maintenance, warning selection, daily results, and onboarding.
 - Add or adjust deterministic checks for every material calculation or phase transition.
+- Run catalog validation for every new or edited scenario and add malformed-content coverage when the authoring schema changes.
 - Never claim a path works unless it was run. Record anything that could not be validated.
 
 ## Placeholder and asset rules

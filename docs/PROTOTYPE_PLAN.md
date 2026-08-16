@@ -6,7 +6,7 @@ Last updated: 2026-08-16
 
 - Normalized the Godot project into the Git repository root; preserved `.git`.
 - Configured the 1280×720 GL Compatibility main scene.
-- Implemented custom hazard/district Resources and deterministic scenario content.
+- Implemented custom hazard/district/scenario Resources and deterministic scenario content.
 - Implemented independent hazard evaluation and outcome/economy calculations.
 - Implemented the complete Day One teaching loop and validated it before final acceptance.
 - Added Day Two capacity prioritization and Day Three faulty evidence/time pressure.
@@ -18,12 +18,13 @@ Last updated: 2026-08-16
 - Added an Industrial alternate path to both Farm Spire and Harbor, authored opening damage through `NetworkModel`, dynamic five-day reporting, and first-week performance thresholds.
 - Added a dedicated overnight maintenance phase after Days One through Four with next-day outlooks, one separate install-or-repair action, maintenance-first opening outages, and daily collection/survey capacity.
 - Added an interface feedback and atmosphere pass: code-drawn weather motion, phase accents, resource pulses, accessible network states, warning/result district markers, draft summaries, assessment-led reports, explicit button focus styling, and keyboard-focused modals.
-- Expanded to 77 dependency-free automated checks plus five graphics-backed 1280×720 regression captures covering Day Four, maintenance, warnings, results, and onboarding.
+- Added a scenario-authoring system with five Inspector-editable day Resources, deterministic catalog conversion, and descriptive validation for ordering, references, nested records, timing, and evidence consistency.
+- Expanded to 85 dependency-free automated checks plus five graphics-backed 1280×720 regression captures covering Day Four, maintenance, warnings, results, and onboarding.
 - Added actual implementation documentation.
 
 ## Current work
 
-The contained first-week, between-day maintenance, and interface feedback milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
+The contained first-week, between-day maintenance, interface feedback, and scenario-authoring/validation milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
 
 ## Remaining milestones
 

@@ -38,6 +38,7 @@ Mouse and keyboard focus navigation are supported by standard Godot Controls. Th
 - Day Four: Glasswind recovery scenario with an opening relay outage and a repair-versus-reroute decision
 - Day Five: severe Cloudburst finale whose evidence options reflect the network routes built during the week
 - Three distinct data-driven districts and hazards
+- Five Inspector-editable scenario Resources with startup validation for ordering, references, evidence, actions, and timing limits
 - Persistent five-site sensor/relay graph with fixed build locations, selectable nodes, one relay and one sensor slot per remote site, alternate routing, and labeled connection state
 - Electrical, crystal, and moisture sensor installation; relay installation; connected reading collection; damaged-equipment repair
 - Network equipment that persists between days and can be damaged by unprotected Sparkstorm, Glasswind, or Cloudburst outcomes
@@ -59,7 +60,7 @@ Run the repository-native checks without installing a test framework:
 godot --headless --path . --script res://tests/run_tests.gd
 ```
 
-The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, opening outages, overnight action limits, repairs, separate maintenance and observation capacity, persistent hazard damage, network-driven evidence, warning markers, draft summaries, result assessments, guided-tour progression, required interactions, skip, local completion preference, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-16 passed 77 checks with exit code 0 under Godot 4.7.1.
+The suite validates scenario-resource loading and malformed-content rejection, hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, opening outages, overnight action limits, repairs, separate maintenance and observation capacity, persistent hazard damage, network-driven evidence, warning markers, draft summaries, result assessments, guided-tour progression, required interactions, skip, local completion preference, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-16 passed 85 checks with exit code 0 under Godot 4.7.1.
 
 Five graphics-backed visual-QA helpers cover the dense Day Four recovery screen, first overnight desk, warning draft, daily result, and guided onboarding. Run `tests/capture_ui.gd`, `tests/capture_maintenance.gd`, `tests/capture_warning.gd`, `tests/capture_result.gd`, and `tests/capture_tutorial.gd` with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical states and bounds.
 
@@ -67,15 +68,15 @@ Five graphics-backed visual-QA helpers cover the dense Day Four recovery screen,
 
 - `scenes/main/` — launch scene
 - `scripts/ui/` — state-driven interface coordinator
-- `scripts/simulation/` — resource types, deterministic content catalog, evaluator, and outcome calculation
-- `resources/hazards/` and `resources/districts/` — editable `.tres` content
+- `scripts/simulation/` — resource schemas, deterministic content catalog and validator, evaluator, and outcome calculation
+- `resources/hazards/`, `resources/districts/`, and `resources/scenarios/` — editable `.tres` content
 - `tests/` — dependency-free checks and capture helper
 - `docs/` — concept, architecture, plan, playtest guide, and decision log
 
 ## Known limitations
 
 - The prototype uses five fixed scenarios and has no save/load.
-- Scenario records are centralized in typed GDScript dictionaries; hazards and districts are standalone custom Resources.
+- Scenario days are fixed custom Resources. Their nested reading, action, and opening-damage records remain Inspector-editable Dictionaries protected by startup validation rather than separate Resource types.
 - The district map remains a structured board; network construction uses a fixed-node graph rather than free placement or terrain simulation.
 - The UI is tuned for a 1280×720 reference window; very small windows are not a target.
 - Audio, full production animation, final art, accessibility narration, and localization are deferred.

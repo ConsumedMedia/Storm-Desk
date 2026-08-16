@@ -1,0 +1,76 @@
+[gd_resource type="Resource" script_class="ScenarioDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/scenario_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+day = 5
+title = "The Week's Last Wall"
+outlook = "A severe front is approaching Harbor and Industrial. Moisture coverage and a redundant eastern route may matter for the final forecast."
+briefing = "A severe front is pressing into the eastern basin. Harbor and Industrial crews both need an accurate call. Your week-long network choices now determine which corroborating routes are available; a second action will make the warning late."
+tutorial = "Final day: use a connected Harbor moisture sensor, the repaired High Ridge route, or an Industrial alternate route. Seek enough confidence without sacrificing preparation time."
+hazard = &"cloudburst"
+severity = 3
+threatened = Array[StringName]([&"industrial", &"harbor"])
+capacity = 2
+safe_actions = 1
+readings = Array[Dictionary]([{
+"faulty": false,
+"id": &"moisture",
+"instrument": "Hygrometer",
+"quality": "clear",
+"supports": &"cloudburst",
+"value": "Moisture: HIGH",
+"visible": true
+}, {
+"faulty": false,
+"id": &"cloud_motion",
+"instrument": "Cloudscope",
+"quality": "imprecise",
+"supports": &"cloudburst",
+"value": "Clouds: DENSE, movement uncertain",
+"visible": true
+}, {
+"faulty": true,
+"id": &"crystal",
+"instrument": "Crystal Spectrometer",
+"quality": "faulty",
+"supports": &"glasswind",
+"value": "Crystal shimmer: HIGH",
+"visible": true
+}, {
+"faulty": false,
+"id": &"condensation",
+"instrument": "Harbor Reservoir Gauge",
+"network_quality": "clear",
+"network_sensor": &"moisture",
+"network_site": &"harbor",
+"network_value": "Condensation: RISING FAST",
+"quality": "missing",
+"supports": &"cloudburst",
+"value": "Condensation: NETWORK READING PENDING",
+"visible": true
+}])
+actions = Array[Dictionary]([{
+"cost": 3,
+"id": &"ridge_profile",
+"label": "Route ridge condensation profile",
+"log": "The High Ridge route confirms climbing condensation over the eastern basin.",
+"quality": "clear",
+"requires_relay": &"ridge",
+"reveals": &"ridge_profile",
+"supports": &"cloudburst",
+"value": "Ridge profile: condensation climbing"
+}, {
+"cost": 1,
+"id": &"industrial_runoff",
+"label": "Poll Industrial runoff telemetry",
+"log": "The Industrial alternate route reports rapidly rising runoff channels.",
+"quality": "clear",
+"requires_relay": &"industrial",
+"reveals": &"industrial_runoff",
+"supports": &"cloudburst",
+"value": "Industrial runoff channels: RISING"
+}])
+opening_damage = Array[Dictionary]([])
+outcome_note = "High moisture, dense slow clouds, and rising condensation identify a severe Cloudburst. The crystal shimmer was ice contamination, not Glasswind."

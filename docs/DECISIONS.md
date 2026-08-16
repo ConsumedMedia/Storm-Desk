@@ -95,3 +95,13 @@ Decision: improve the placeholder interface with code-drawn atmosphere, phase ac
 Reason: the five-day and maintenance systems are mechanically complete, but players need to notice selections, resource spending, connectivity, warning coverage, and outcomes without repeatedly consulting the event log. These changes improve comprehension and tone while preserving the tested simulation.
 
 Alternatives considered: final illustration, downloaded assets, particle-heavy storm scenes, or a UI framework. Deferred or rejected because the prototype still needs balance evidence, must remain dependency-free, and should not lock presentation before the core loop is validated.
+
+## 2026-08-16 — Move scenario authoring into validated Resources
+
+Decision: represent each fixed day as a `ScenarioDefinition` `.tres` Resource, load paths in chronological order through `ScenarioCatalog`, validate authored content before play, and preserve the established runtime Dictionary passed to the evaluator, calculator, network model, and UI.
+
+Reason: adding or revising days should not require editing a large GDScript catalog, but flexible nested evidence and action records still need descriptive safeguards. The Resource exposes top-level fields in Godot's Inspector while the validator catches broken ordering, unknown IDs, invalid qualities/routes/timing, duplicate records, and evidence that initially contradicts the authored answer.
+
+This supersedes the storage portion of “Use deterministic authored days”; scenarios remain deterministic and fixed, but their source records are now custom Resources rather than catalog functions.
+
+Alternatives considered: separate Resource classes for every nested reading/action, JSON files, a custom editor plugin, or procedural generation. Deferred because the current hybrid stays dependency-free, compact, Inspector-editable, and compatible with the proven runtime boundary.

@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="ScenarioDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/scenario_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+day = 1
+title = "A Clean Signal"
+briefing = "A compact front is forming west of the inhabited islands. All essential desk instruments are working. Use the rules card, compare the readings, then warn the district in serious danger."
+tutorial = "Teaching day: Sparkstorms combine rising charge, falling pressure, and eastward clouds. The Industrial District is especially vulnerable."
+hazard = &"sparkstorm"
+severity = 2
+threatened = Array[StringName]([&"industrial"])
+capacity = 0
+safe_actions = 0
+readings = Array[Dictionary]([{
+"faulty": false,
+"id": &"charge",
+"instrument": "Aethermeter",
+"quality": "clear",
+"supports": &"sparkstorm",
+"value": "Electrical charge: RISING",
+"visible": true
+}, {
+"faulty": false,
+"id": &"pressure",
+"instrument": "Barometer",
+"quality": "clear",
+"supports": &"sparkstorm",
+"value": "Air pressure: FALLING",
+"visible": true
+}, {
+"faulty": false,
+"id": &"cloud_motion",
+"instrument": "Cloudscope",
+"quality": "clear",
+"supports": &"sparkstorm",
+"value": "Cloud movement: EASTWARD",
+"visible": true
+}])
+actions = Array[Dictionary]([])
+opening_damage = Array[Dictionary]([])
+outcome_note = "The rising charge, falling pressure, and eastward cloud track form the complete Sparkstorm pattern."

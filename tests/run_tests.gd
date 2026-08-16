@@ -10,6 +10,36 @@ func run_all() -> void:
 	var hazards: Array[HazardDefinition] = ScenarioCatalog.hazards()
 	var districts: Array[DistrictDefinition] = ScenarioCatalog.districts()
 	var days: Array[Dictionary] = ScenarioCatalog.days()
+	var scenario_definitions: Array[Resource] = ScenarioCatalog.scenario_definitions()
+	check(scenario_definitions.size() == 5, "Five Inspector-editable scenario resources load from the catalog")
+	check(ScenarioCatalog.validation_errors(scenario_definitions).is_empty(), "Authored scenario resources pass schema and reference validation")
+
+	var malformed_definitions: Array[Resource] = duplicate_resources(scenario_definitions)
+	malformed_definitions[1].set("day", 4)
+	malformed_definitions[1].set("hazard", &"unknown_hazard")
+	var invalid_threatened: Array[StringName] = [&"unknown_district"]
+	malformed_definitions[1].set("threatened", invalid_threatened)
+	var malformed_readings: Array = malformed_definitions[0].get("readings") as Array
+	var duplicate_reading: Dictionary = malformed_readings[1] as Dictionary
+	duplicate_reading["id"] = &"charge"
+	var malformed_actions: Array = malformed_definitions[1].get("actions") as Array
+	var malformed_action: Dictionary = malformed_actions[0] as Dictionary
+	malformed_action["cost"] = 0
+	malformed_action["requires_relay"] = &"unknown_site"
+	var malformed_errors: Array[String] = ScenarioCatalog.validation_errors(malformed_definitions)
+	check(errors_contain(malformed_errors, "sequential day order"), "Validator rejects out-of-order scenario days")
+	check(errors_contain(malformed_errors, "unknown hazard"), "Validator rejects unknown hazard references")
+	check(errors_contain(malformed_errors, "unknown district"), "Validator rejects unknown district references")
+	check(errors_contain(malformed_errors, "duplicates reading id"), "Validator rejects duplicate reading IDs")
+	check(errors_contain(malformed_errors, "cost must be greater than zero") and errors_contain(malformed_errors, "unknown required relay site"), "Validator rejects malformed reveal actions")
+
+	var contradictory_definitions: Array[Resource] = duplicate_resources(scenario_definitions)
+	var contradictory_readings: Array = contradictory_definitions[0].get("readings") as Array
+	for reading_value: Variant in contradictory_readings:
+		var contradictory_reading: Dictionary = reading_value as Dictionary
+		contradictory_reading["supports"] = &"glasswind"
+	var contradictory_errors: Array[String] = ScenarioCatalog.validation_errors(contradictory_definitions)
+	check(errors_contain(contradictory_errors, "initially visible evidence favors"), "Validator rejects initially contradictory evidence")
 
 	# Day One is intentionally validated first as the vertical slice.
 	var day_one_warned: Array[StringName] = [&"industrial"]
@@ -273,6 +303,18 @@ func node_contains_text(node: Node, expected: String) -> bool:
 		return true
 	for child: Node in node.get_children():
 		if node_contains_text(child, expected):
+			return true
+	return false
+
+func duplicate_resources(resources: Array[Resource]) -> Array[Resource]:
+	var result: Array[Resource] = []
+	for resource: Resource in resources:
+		result.append(resource.duplicate(true) as Resource)
+	return result
+
+func errors_contain(errors: Array[String], expected: String) -> bool:
+	for error: String in errors:
+		if error.contains(expected):
 			return true
 	return false
 

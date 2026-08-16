@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="ScenarioDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/scenario_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+day = 4
+title = "The Broken Ridge"
+outlook = "Crystal shear may disrupt High Ridge overnight while unstable air approaches Farm Spire. Repair readiness or a redundant route may matter."
+briefing = "Overnight crystal shear disabled the High Ridge relay before today's maintenance decision. Farm Spire can report only if you repaired the ridge or established the Industrial alternate route. Capacity allows two evidence actions, but only one preserves a timely warning."
+tutorial = "Recovery consequence: collect through the route prepared overnight, or dispatch a ground sampler and leave network work for the next maintenance window. The falling-pressure signal is marked suspect."
+hazard = &"glasswind"
+severity = 2
+threatened = Array[StringName]([&"farmland"])
+capacity = 2
+safe_actions = 1
+readings = Array[Dictionary]([{
+"faulty": false,
+"id": &"wind_shift",
+"instrument": "Vane Array",
+"quality": "clear",
+"supports": &"glasswind",
+"value": "Wind direction: RAPIDLY SHIFTING",
+"visible": true
+}, {
+"faulty": false,
+"id": &"humidity",
+"instrument": "Hygrometer",
+"quality": "imprecise",
+"supports": &"glasswind",
+"value": "Humidity: LOW, calibration wavering",
+"visible": true
+}, {
+"faulty": true,
+"id": &"pressure",
+"instrument": "Barometer",
+"quality": "faulty",
+"supports": &"sparkstorm",
+"value": "Air pressure: FALLING ERRATICALLY",
+"visible": true
+}, {
+"faulty": false,
+"id": &"crystal",
+"instrument": "Farm Spire Spectrometer",
+"network_quality": "clear",
+"network_sensor": &"crystal",
+"network_site": &"farmland",
+"network_value": "Crystal density: HIGH",
+"quality": "missing",
+"supports": &"glasswind",
+"value": "Crystal density: LINK OFFLINE",
+"visible": true
+}])
+actions = Array[Dictionary]([{
+"cost": 3,
+"id": &"ground_crystal",
+"label": "Dispatch ground crystal sampler",
+"log": "The ground team confirms high crystal density but does not restore the relay network.",
+"quality": "clear",
+"reveals": &"ground_crystal",
+"supports": &"glasswind",
+"value": "Ground sample: HIGH crystal density"
+}])
+opening_damage = Array[Dictionary]([{
+"component": &"relay",
+"existing_message": "Network: the High Ridge relay remains damaged from an earlier storm.",
+"message": "Network: overnight crystal shear damaged the High Ridge relay.",
+"site": &"ridge"
+}])
+outcome_note = "Rapid wind shifts, low humidity, and high crystal density identify Glasswind. The erratic pressure reading came from a vibration-damaged barometer."

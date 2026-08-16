@@ -27,7 +27,8 @@ Overnight Maintenance was appended to preserve the existing tutorial-facing phas
 - `hazard_definition.gd` and `district_definition.gd` define typed custom Resource schemas.
 - `resources/hazards/*.tres` contains names, evidence patterns, and threats.
 - `resources/districts/*.tres` contains descriptions, base damage, and per-hazard vulnerability multipliers.
-- `scenario_catalog.gd` is deterministic content data for the five-day first week. Scenario dictionaries contain briefing and outlook copy, ground truth, readings with quality metadata, network actions, capacity, safe-action timing limits, evidence explanations, and optional authored opening damage.
+- `scenario_definition.gd` defines the Inspector-editable top-level day schema. `resources/scenarios/*.tres` contains briefing and outlook copy, ground truth, readings with quality metadata, network actions, capacity, safe-action timing limits, evidence explanations, and optional authored opening damage.
+- `scenario_catalog.gd` loads the five scenario paths in deterministic order, validates them, and converts each Resource to the existing runtime Dictionary boundary. `scenario_validator.gd` rejects missing copy, non-sequential or duplicate days, unknown hazards/districts/network references, malformed readings/actions/opening damage, invalid timing limits, and initially visible evidence that favors a different hazard.
 - `network_model.gd` owns five fixed sites, graph edges, relay reachability, sensor/relay slots, equipment health, installation, alternate routing, repairs, authored opening outages, and persistent hazard damage. Bureau HQ and healthy connected relays form the traversal graph; a sensor is available when its site touches that graph.
 - `network_diagram.gd` is a replaceable Control view of `NetworkModel`. It draws labeled nodes and edges, accepts site selection, and never owns simulation truth.
 - `atmosphere_backdrop.gd` is a replaceable, input-transparent Control that draws a subtle phase-colored gradient and moving wind traces. It owns no gameplay state.
@@ -56,8 +57,15 @@ Missed protection has infrastructure consequences: Sparkstorms can damage the In
 
 ## Adding content
 
-Add hazard and district definitions as `.tres` files and register their paths in `ScenarioCatalog`. For a new fixed prototype day, add a deterministic scenario function with quality-tagged readings and explicit reveal actions. If scenario volume grows beyond this prototype, migrate scenario records to custom Resources while preserving the evaluator/calculator input boundary.
+Add hazard and district definitions as `.tres` files and register their paths in `ScenarioCatalog`. For a new fixed day:
+
+1. Duplicate an existing file under `resources/scenarios/` and edit its exported fields in the Inspector.
+2. Give the day a sequential number, valid hazard and district IDs, quality-tagged readings, explicit reveal actions, and a safe-action limit no greater than capacity.
+3. Add its path to `SCENARIO_PATHS` in chronological order.
+4. Run `godot --headless --path . --script res://tests/run_tests.gd`; treat every `Scenario validation:` message as an authoring error.
+
+Nested reading, action, and opening-damage records intentionally remain Dictionaries so they are compact to edit. `ScenarioValidator` is their schema boundary; extend both it and the regression cases whenever a new nested field becomes required.
 
 ## Tests
 
-`tests/run_tests.gd` is a dependency-free SceneTree test runner. Its 77 checks cover simulation calculations, deterministic ordering, graph connectivity, nightly installation limits, separate action pools, alternate routes, authored and hazard-driven outages, repair, persistent equipment, network-driven evidence, invalid-action guards, labeled warning/protected states, draft summaries, assessment-led reports, tutorial progression/required actions/skip/persistence, all five coordinator-driven day resolutions, final report, and restart. Five graphics-backed 1280×720 helpers capture Day Four recovery, maintenance, warning selection, daily results, and onboarding. All save ignored output and assert critical states or viewport bounds.
+`tests/run_tests.gd` is a dependency-free SceneTree test runner. Its 85 checks cover valid scenario resources, malformed authoring rejection, simulation calculations, deterministic ordering, graph connectivity, nightly installation limits, separate action pools, alternate routes, authored and hazard-driven outages, repair, persistent equipment, network-driven evidence, invalid-action guards, labeled warning/protected states, draft summaries, assessment-led reports, tutorial progression/required actions/skip/persistence, all five coordinator-driven day resolutions, final report, and restart. Five graphics-backed 1280×720 helpers capture Day Four recovery, maintenance, warning selection, daily results, and onboarding. All save ignored output and assert critical states or viewport bounds.

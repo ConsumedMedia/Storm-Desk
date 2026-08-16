@@ -1,0 +1,78 @@
+[gd_resource type="Resource" script_class="ScenarioDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/simulation/scenario_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+day = 3
+title = "Noise Over Deepwater"
+outlook = "A dense bank is gathering over the eastern basin. Harbor moisture coverage and a reliable eastern transmission path may be useful."
+briefing = "A dense bank has stalled over the eastern basin. One desk instrument is producing a suspicious signal. Prepared network equipment persists from prior nights; capacity allows two evidence actions, and the second makes any warning late."
+tutorial = "Conflicting day: collect from connected sensors or commission a survey, then balance confidence against preparation time. The result will identify faulty evidence."
+hazard = &"cloudburst"
+severity = 3
+threatened = Array[StringName]([&"harbor", &"farmland"])
+capacity = 2
+safe_actions = 1
+readings = Array[Dictionary]([{
+"faulty": false,
+"id": &"moisture",
+"instrument": "Hygrometer",
+"quality": "clear",
+"supports": &"cloudburst",
+"value": "Moisture: HIGH",
+"visible": true
+}, {
+"faulty": false,
+"id": &"cloud_motion",
+"instrument": "Cloudscope",
+"quality": "clear",
+"supports": &"cloudburst",
+"value": "Clouds: DENSE and SLOW-MOVING",
+"visible": true
+}, {
+"faulty": true,
+"id": &"charge",
+"instrument": "Aethermeter",
+"quality": "faulty",
+"supports": &"sparkstorm",
+"value": "Electrical charge: RISING",
+"visible": true
+}, {
+"faulty": false,
+"id": &"condensation",
+"instrument": "Reservoir Gauge",
+"network_quality": "clear",
+"network_sensor": &"moisture",
+"network_site": &"harbor",
+"network_value": "Condensation: RISING FAST",
+"quality": "missing",
+"supports": &"cloudburst",
+"value": "Condensation: UNAVAILABLE",
+"visible": true
+}, {
+"faulty": false,
+"id": &"charge_check",
+"instrument": "Backup Charge Mast",
+"network_quality": "clear",
+"network_sensor": &"electrical",
+"network_site": &"industrial",
+"network_value": "Backup charge mast: NORMAL",
+"quality": "missing",
+"supports": &"cloudburst",
+"value": "Backup charge mast: NOT POLLED",
+"visible": true
+}])
+actions = Array[Dictionary]([{
+"cost": 3,
+"id": &"altitude",
+"label": "Relay cloud-altitude survey",
+"log": "The High Ridge relay gives an imprecise but concerning low cloud-base estimate.",
+"quality": "imprecise",
+"requires_relay": &"ridge",
+"reveals": &"altitude",
+"supports": &"cloudburst",
+"value": "Cloud base: LOW over eastern basin"
+}])
+opening_damage = Array[Dictionary]([])
+outcome_note = "High moisture, slow dense clouds, and rising condensation form the Cloudburst pattern. The rising-charge reading was faulty; the backup mast remained normal."
