@@ -22,6 +22,8 @@ func run_all() -> void:
 
 	check(HazardEvaluator.best_match(days[0]["readings"], hazards) == &"sparkstorm", "Clear readings score Sparkstorm highest")
 	check(HazardEvaluator.best_match(days[2]["readings"], hazards) == &"cloudburst", "Two corroborating Day Three readings outweigh one faulty signal")
+	check(HazardEvaluator.best_match(days[3]["readings"], hazards) == &"glasswind", "Day Four remains classifiable before optional recovery evidence")
+	check(HazardEvaluator.best_match(days[4]["readings"], hazards) == &"cloudburst", "Day Five's corroborating readings outweigh its contaminated crystal signal")
 
 	var farmland: DistrictDefinition = district_by_id(districts, &"farmland")
 	var industrial: DistrictDefinition = district_by_id(districts, &"industrial")
@@ -49,7 +51,7 @@ func run_all() -> void:
 
 	var fresh_days: Array[Dictionary] = ScenarioCatalog.days()
 	check(str(days) == str(fresh_days), "Scenario catalog is deterministic across loads")
-	check(days.size() == 3 and int(days[0]["day"]) == 1 and int(days[2]["day"]) == 3, "Three fixed scenarios load in order")
+	check(days.size() == 5 and int(days[0]["day"]) == 1 and int(days[4]["day"]) == 5, "Five fixed scenarios load in order")
 
 	var network := NetworkModel.new()
 	check(network.online_relays().has(&"ridge") and network.is_site_covered(&"harbor"), "Starter High Ridge relay covers downstream sites")
@@ -61,8 +63,15 @@ func run_all() -> void:
 	var alternate_network := NetworkModel.new()
 	alternate_network.install_relay(&"industrial")
 	alternate_network.install_sensor(&"harbor", &"moisture")
+	alternate_network.install_sensor(&"farmland", &"crystal")
 	alternate_network.damage_relay(&"ridge")
 	check(alternate_network.has_online_sensor(&"harbor", &"moisture"), "Industrial relay provides an alternate Harbor route")
+	check(alternate_network.has_online_sensor(&"farmland", &"crystal"), "Industrial relay provides an alternate Farm Spire route")
+	var opening_network := NetworkModel.new()
+	var opening_events: Array[String] = opening_network.apply_opening_damage(days[3]["opening_damage"] as Array)
+	check(not opening_events.is_empty() and not opening_network.online_relays().has(&"ridge"), "Day Four opening damage disables High Ridge deterministically")
+	opening_network.install_relay(&"industrial")
+	check(opening_network.is_site_covered(&"farmland") and opening_network.is_site_covered(&"harbor"), "Industrial construction restores both downstream routes")
 	var exposed_network := NetworkModel.new()
 	var no_warnings: Array[StringName] = []
 	var network_damage: Array[String] = exposed_network.resolve_hazard(&"glasswind", &"sparkstorm", no_warnings, false)
@@ -72,6 +81,12 @@ func run_all() -> void:
 	var optimal_two: Dictionary = OutcomeCalculator.calculate(days[1], districts, &"glasswind", 2, day_two_warned, 1, 4)
 	check(int(optimal_two["protected"]) == 2 and bool(optimal_two["correct_hazard"]), "Day Two can resolve with two protected districts")
 	check(int(timely["protected"]) == 2 and bool(timely["correct_hazard"]), "Day Three can resolve with two protected districts")
+	var day_four_warned: Array[StringName] = [&"farmland"]
+	var optimal_four: Dictionary = OutcomeCalculator.calculate(days[3], districts, &"glasswind", 2, day_four_warned, 1, 5)
+	check(int(optimal_four["damage"]) == 10 and not bool(optimal_four["late"]), "Day Four supports a timely one-action network recovery")
+	var day_five_warned: Array[StringName] = [&"industrial", &"harbor"]
+	var optimal_five: Dictionary = OutcomeCalculator.calculate(days[4], districts, &"cloudburst", 3, day_five_warned, 1, 1)
+	check(int(optimal_five["damage"]) == 21 and int(optimal_five["protected"]) == 2, "Day Five's correct severe warning protects both threatened districts")
 
 	var main_scene: PackedScene = load("res://scenes/main/main.tscn") as PackedScene
 	var main: Control = main_scene.instantiate() as Control
@@ -82,7 +97,7 @@ func run_all() -> void:
 	main.call("request_observation", {"cost": 1, "reveals": &"invalid", "value": "invalid", "quality": "clear", "log": "invalid"})
 	check(int(main.get("budget")) == original_budget and int(main.get("observations_used")) == original_used, "Invalid network action fails without changing state")
 
-	# Drive the actual coordinator through all three deterministic days.
+	# Drive the actual coordinator through the complete deterministic first week.
 	main.call("set_phase", 3)
 	main.call("on_hazard_selected", 1) # Sparkstorm
 	main.call("on_district_toggled", true, &"industrial")
@@ -114,9 +129,38 @@ func run_all() -> void:
 	main.call("on_district_toggled", true, &"farmland")
 	main.call("on_district_toggled", true, &"harbor")
 	main.call("confirm_warning")
-	check((main.get("reports") as Array).size() == 3 and int(main.get("day_index")) == 2, "Coordinator completes all three prototype days")
+	check((main.get("reports") as Array).size() == 3 and int(main.get("day_index")) == 2, "Coordinator completes the original three-day arc")
+	main.call("advance_day")
+	check(int((main.get("scenario") as Dictionary)["day"]) == 4 and not session_network.online_relays().has(&"ridge"), "Day Four opens with persistent High Ridge damage")
+	main.call("set_phase", 2)
+	main.call("select_network_site", &"industrial")
+	var relay_selector := OptionButton.new()
+	relay_selector.add_item("Relay")
+	relay_selector.set_item_metadata(0, &"relay")
+	main.call("install_network_equipment", relay_selector)
+	check(int(main.get("observations_used")) == 1 and session_network.online_relays().has(&"industrial"), "Day Four can spend its timely action on the alternate relay")
+	check(session_network.has_online_sensor(&"farmland", &"crystal"), "Industrial alternate route reconnects the persistent Farm Spire sensor")
+	check(str(reading_by_id(main.get("readings") as Array, &"crystal").get("quality", "missing")) == "clear", "Restored routing immediately delivers Day Four crystal evidence")
+	main.call("set_phase", 3)
+	main.call("on_hazard_selected", 2) # Glasswind
+	main.call("on_district_toggled", true, &"farmland")
+	main.call("confirm_warning")
+	check((main.get("reports") as Array).size() == 4 and int(main.get("day_index")) == 3, "Coordinator resolves the Day Four recovery scenario")
+	main.call("advance_day")
+	check(int((main.get("scenario") as Dictionary)["day"]) == 5 and session_network.online_relays().has(&"industrial"), "Alternate construction persists into the final day")
+	main.call("set_phase", 2)
+	var day_five_action: Dictionary = ((main.get("scenario") as Dictionary)["actions"] as Array)[1]
+	main.call("request_observation", day_five_action)
+	check(str(reading_by_id(main.get("readings") as Array, &"industrial_runoff").get("quality", "missing")) == "clear", "Day Five can use the Industrial alternate telemetry route")
+	main.call("set_phase", 3)
+	main.call("on_hazard_selected", 3) # Cloudburst
+	main.set("selected_severity", 3)
+	main.call("on_district_toggled", true, &"industrial")
+	main.call("on_district_toggled", true, &"harbor")
+	main.call("confirm_warning")
+	check((main.get("reports") as Array).size() == 5 and int(main.get("day_index")) == 4, "Coordinator completes all five first-week scenarios")
 	main.call("show_final_report")
-	check(int(main.get("phase")) == 7, "Coordinator reaches the final performance report")
+	check(int(main.get("phase")) == 7, "Coordinator reaches the five-day performance report")
 	main.set("budget", 1)
 	main.set("trust", 2)
 	main.call("restart_session")

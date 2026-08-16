@@ -69,3 +69,11 @@ Decision: introduce first-time onboarding after the Day One briefing with 12 liv
 Reason: owner testing showed that the interface benefits from explicit focus guidance, while a static slideshow would not teach where controls live or how phase transitions work. Signal-gated steps teach interaction without selecting answers or consuming resources for the player.
 
 Alternatives considered: permanently embedded callouts, video onboarding, and hard-coded coordinate highlights. Rejected because they would add clutter, external assets, or break under container/layout changes.
+
+## 2026-08-15 — Extend the prototype to a five-day first week
+
+Decision: retain the three established hazard rules and add two deterministic authored days. Day Four applies a clearly briefed High Ridge outage and offers repair, Industrial rerouting, or evidence-only recovery. Day Five uses route-dependent Cloudburst evidence and a severe two-district threat. The fixed graph gains an Industrial-to-Farm edge so one Industrial relay can redundantly serve both downstream districts.
+
+Reason: three days introduced construction and damage but ended before repair and redundancy could influence later decisions. A contained five-day arc gives persistent infrastructure time to produce consequences without adding procedural generation, a separate maintenance economy, or new production systems.
+
+Alternatives considered: add new hazard types, procedural weeks, or a between-day maintenance phase immediately. Deferred because authored reuse keeps the fictional rules learnable and lets playtests determine whether a separate planning phase is necessary.

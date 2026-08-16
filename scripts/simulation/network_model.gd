@@ -14,8 +14,8 @@ func _init() -> void:
 	sites = [
 		{"id": &"hq", "label": "Bureau HQ", "short": "HQ", "position": Vector2(0.16, 0.50), "neighbors": [&"ridge", &"industrial"]},
 		{"id": &"ridge", "label": "High Ridge", "short": "RIDGE", "position": Vector2(0.46, 0.50), "neighbors": [&"hq", &"farmland", &"harbor"]},
-		{"id": &"farmland", "label": "Farm Spire", "short": "FARM", "position": Vector2(0.78, 0.20), "neighbors": [&"ridge"]},
-		{"id": &"industrial", "label": "Industrial Mast", "short": "IND", "position": Vector2(0.48, 0.84), "neighbors": [&"hq", &"harbor"]},
+		{"id": &"farmland", "label": "Farm Spire", "short": "FARM", "position": Vector2(0.78, 0.20), "neighbors": [&"ridge", &"industrial"]},
+		{"id": &"industrial", "label": "Industrial Mast", "short": "IND", "position": Vector2(0.48, 0.84), "neighbors": [&"hq", &"farmland", &"harbor"]},
 		{"id": &"harbor", "label": "Harbor Buoy", "short": "HARBOR", "position": Vector2(0.80, 0.70), "neighbors": [&"ridge", &"industrial"]},
 	]
 	reset()
@@ -135,6 +135,23 @@ func damage_sensor(site_id: StringName) -> bool:
 		return true
 	return false
 
+func apply_opening_damage(entries: Array) -> Array[String]:
+	var events: Array[String] = []
+	for entry: Dictionary in entries:
+		var site_id: StringName = StringName(entry.get("site", &""))
+		var component: StringName = StringName(entry.get("component", &""))
+		var changed: bool = false
+		match component:
+			&"relay":
+				changed = damage_relay(site_id)
+			&"sensor":
+				changed = damage_sensor(site_id)
+		if changed:
+			events.append(str(entry.get("message", "Network equipment was damaged at %s." % site_label(site_id))))
+		else:
+			events.append(str(entry.get("existing_message", "Network equipment at %s was already unavailable." % site_label(site_id))))
+	return events
+
 func resolve_hazard(actual_hazard: StringName, chosen_hazard: StringName, warned_districts: Array[StringName], late: bool) -> Array[String]:
 	var events: Array[String] = []
 	var correct: bool = actual_hazard == chosen_hazard
@@ -169,4 +186,3 @@ func summary() -> String:
 		if StringName(site["id"]) != &"hq":
 			lines.append(status_text(StringName(site["id"])))
 	return "\n".join(lines)
-

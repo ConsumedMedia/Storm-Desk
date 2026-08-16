@@ -98,7 +98,7 @@ func build_interface() -> void:
 	var title := make_label("STORM DESK", 23, COLOR_ACCENT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_child(title)
-	day_label = make_label("DAY 1 / 3", 16, COLOR_TEXT)
+	day_label = make_label("DAY 1 / 5", 16, COLOR_TEXT)
 	header_row.add_child(day_label)
 	budget_label = make_label("BUDGET 30", 16, COLOR_TEXT)
 	header_row.add_child(budget_label)
@@ -282,6 +282,9 @@ func load_day() -> void:
 		check.set_pressed_no_signal(false)
 	on_hazard_selected(0)
 	log_event("Day %d opened: %s" % [int(scenario["day"]), str(scenario["title"])])
+	var opening_damage: Array = scenario.get("opening_damage", []) as Array
+	for event: String in network_model.apply_opening_damage(opening_damage):
+		log_event(event)
 	set_phase(Phase.MORNING_BRIEFING)
 	show_modal(
 		"MORNING BRIEFING — DAY %d" % int(scenario["day"]),
@@ -346,7 +349,7 @@ func set_phase(next_phase: Phase) -> void:
 	phase_changed.emit(int(phase))
 
 func refresh_all() -> void:
-	day_label.text = "DAY %d / 3" % int(scenario.get("day", 1))
+	day_label.text = "DAY %d / %d" % [int(scenario.get("day", 1)), scenarios.size()]
 	budget_label.text = "BUDGET %d" % budget
 	trust_label.text = "TRUST %d" % trust
 	var capacity: int = int(scenario.get("capacity", 0))
@@ -629,12 +632,12 @@ func show_final_report() -> void:
 			correct_days += 1
 		lines.append("Day %d: damage %d, trust %+d, budget %+d%s" % [int(report["day"]), int(report["damage"]), int(report["trust_delta"]), int(report["budget_delta"]), ", late warning" if bool(report["late"]) else ""])
 	var rating: String = "Bureau in recovery"
-	if trust >= 58 and total_damage <= 35:
+	if trust >= 70 and total_damage <= 90:
 		rating = "Trusted island forecaster"
-	elif trust >= 45:
+	elif trust >= 50:
 		rating = "Steady desk operator"
-	var body := "%s\n\nFinal trust: %d   Final budget: %d\nCorrect hazard calls: %d / 3\nDistricts protected: %d\nTotal damage: %d\n\n%s\n\nFINAL NETWORK\n%s\n\nRestart resets all deterministic scenarios and network construction without closing the application." % [rating, trust, budget, correct_days, protected, total_damage, "\n".join(lines), network_model.summary()]
-	show_modal("THREE-DAY PERFORMANCE REPORT", body, "Restart prototype", restart_session)
+	var body := "%s\n\nFinal trust: %d   Final budget: %d\nCorrect hazard calls: %d / %d\nDistricts protected: %d\nTotal damage: %d\n\n%s\n\nFINAL NETWORK\n%s\n\nRestart resets all deterministic scenarios and network construction without closing the application." % [rating, trust, budget, correct_days, scenarios.size(), protected, total_damage, "\n".join(lines), network_model.summary()]
+	show_modal("FIVE-DAY PERFORMANCE REPORT", body, "Restart first week", restart_session)
 
 func on_hazard_selected(index: int) -> void:
 	selected_hazard = StringName(hazard_option.get_item_metadata(index))
@@ -663,7 +666,7 @@ func show_help() -> void:
 	var lines: Array[String] = []
 	for hazard: HazardDefinition in hazards:
 		lines.append("%s\nEvidence: %s\nThreat: %s" % [hazard.display_name, hazard.evidence_summary, hazard.threat_summary])
-	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nNETWORK\nSelect fixed sites on the diagram. HQ and healthy connected relays create a transmission path. Each site has one relay slot and one sensor slot. Installations, repairs, collections, and surveys cost budget and capacity; equipment persists between days and can be damaged by an unprotected hazard. R / R! marks healthy or damaged relays; E, C, and M mark sensor types.\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution. On Day 3, a second network action makes the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage.\n\nReplay Guided Tour resets to Day One when necessary; it does not preserve the current run." % "\n\n".join(lines)
+	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nNETWORK\nSelect fixed sites on the diagram. HQ and healthy connected relays create a transmission path. Each site has one relay slot and one sensor slot. Installations, repairs, collections, and surveys cost budget and capacity; equipment persists between days and can be damaged by an unprotected hazard. R / R! marks healthy or damaged relays; E, C, and M mark sensor types.\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution. Each briefing states the day's capacity and whether taking a second action will make the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage.\n\nReplay Guided Tour resets to Day One when necessary; it does not preserve the current run." % "\n\n".join(lines)
 	show_modal("RULES / HELP", body, "Close", func() -> void: pass, "Replay guided tour", replay_guided_tour)
 
 func replay_guided_tour() -> void:

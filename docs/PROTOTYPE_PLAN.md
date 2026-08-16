@@ -14,18 +14,19 @@ Last updated: 2026-08-15
 - Added a persistent fixed-site sensor/relay network with selectable nodes, graph connectivity, equipment installation, alternate routing, damage, repairs, and network-driven readings.
 - Added scroll-safe district and network panels after owner testing identified 720px overflow defects.
 - Added an optional 12-step guided tour with live target cutouts, input masking, phase-aware action requirements, persistent completion/skip preference, and Rules/Help replay.
-- Expanded to 47 dependency-free automated checks plus graphics-backed 1280×720 network-planning and tutorial regression captures.
+- Expanded the campaign into a five-day first week: Day Four opens with a High Ridge outage and repair-versus-reroute choice; Day Five makes prior routes affect a severe final forecast.
+- Added an Industrial alternate path to both Farm Spire and Harbor, authored opening damage through `NetworkModel`, dynamic five-day reporting, and first-week performance thresholds.
+- Expanded to 62 dependency-free automated checks plus graphics-backed 1280×720 Day Four network-planning and tutorial regression captures.
 - Added actual implementation documentation.
 
 ## Current work
 
-Owner decision: defer structured external playtesting until the prototype has progressed beyond the original three-day loop. Current technical work should extend the persistent network into a contained first-week milestone without adding out-of-scope production systems.
+The contained first-week milestone is complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
 
 ## Remaining milestones
 
-- Add a contained five-day first week that gives construction, damage, repair, and alternate routing more room to matter.
 - Add between-day network planning only if the daily capacity model proves too restrictive for readable construction decisions.
-- Conduct at least five observed playtests using `PLAYTEST_GUIDE.md` after that milestone.
+- Conduct at least five observed playtests using `PLAYTEST_GUIDE.md`.
 - Decide whether evidence language, network costs, and warning-time pressure produce meaningful uncertainty.
 
 ## Deferred

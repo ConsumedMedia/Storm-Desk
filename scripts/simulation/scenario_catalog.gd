@@ -26,7 +26,7 @@ static func districts() -> Array[DistrictDefinition]:
 	return result
 
 static func days() -> Array[Dictionary]:
-	return [day_one(), day_two(), day_three()]
+	return [day_one(), day_two(), day_three(), day_four(), day_five()]
 
 static func day_one() -> Dictionary:
 	return {
@@ -92,6 +92,61 @@ static func day_three() -> Dictionary:
 			{"id": &"altitude", "label": "Relay cloud-altitude survey", "cost": 3, "requires_relay": &"ridge", "reveals": &"altitude", "value": "Cloud base: LOW over eastern basin", "quality": "imprecise", "supports": &"cloudburst", "log": "The High Ridge relay gives an imprecise but concerning low cloud-base estimate."},
 		],
 		"outcome_note": "High moisture, slow dense clouds, and rising condensation form the Cloudburst pattern. The rising-charge reading was faulty; the backup mast remained normal.",
+	}
+
+static func day_four() -> Dictionary:
+	return {
+		"day": 4,
+		"title": "The Broken Ridge",
+		"briefing": "Overnight crystal shear disabled the High Ridge relay. Farm Spire is cut off unless you repair the ridge or establish the Industrial alternate route. Capacity allows two actions, but only one preserves a timely warning.",
+		"tutorial": "Recovery day: restore a route for the Farm Spire crystal sensor, or dispatch a ground sampler and leave the network damage for later. The falling-pressure signal is marked suspect.",
+		"hazard": &"glasswind",
+		"severity": 2,
+		"threatened": [&"farmland"],
+		"capacity": 2,
+		"safe_actions": 1,
+		"opening_damage": [
+			{
+				"site": &"ridge",
+				"component": &"relay",
+				"message": "Network: overnight crystal shear damaged the High Ridge relay.",
+				"existing_message": "Network: the High Ridge relay remains damaged from an earlier storm.",
+			},
+		],
+		"readings": [
+			reading(&"wind_shift", "Vane Array", "Wind direction: RAPIDLY SHIFTING", "clear", &"glasswind", true, false),
+			reading(&"humidity", "Hygrometer", "Humidity: LOW, calibration wavering", "imprecise", &"glasswind", true, false),
+			reading(&"pressure", "Barometer", "Air pressure: FALLING ERRATICALLY", "faulty", &"sparkstorm", true, true),
+			network_reading(&"crystal", "Farm Spire Spectrometer", "Crystal density: LINK OFFLINE", &"glasswind", &"crystal", &"farmland", "Crystal density: HIGH", "clear"),
+		],
+		"actions": [
+			{"id": &"ground_crystal", "label": "Dispatch ground crystal sampler", "cost": 3, "reveals": &"ground_crystal", "value": "Ground sample: HIGH crystal density", "quality": "clear", "supports": &"glasswind", "log": "The ground team confirms high crystal density but does not restore the relay network."},
+		],
+		"outcome_note": "Rapid wind shifts, low humidity, and high crystal density identify Glasswind. The erratic pressure reading came from a vibration-damaged barometer.",
+	}
+
+static func day_five() -> Dictionary:
+	return {
+		"day": 5,
+		"title": "The Week's Last Wall",
+		"briefing": "A severe front is pressing into the eastern basin. Harbor and Industrial crews both need an accurate call. Your week-long network choices now determine which corroborating routes are available; a second action will make the warning late.",
+		"tutorial": "Final day: use a connected Harbor moisture sensor, the repaired High Ridge route, or an Industrial alternate route. Seek enough confidence without sacrificing preparation time.",
+		"hazard": &"cloudburst",
+		"severity": 3,
+		"threatened": [&"industrial", &"harbor"],
+		"capacity": 2,
+		"safe_actions": 1,
+		"readings": [
+			reading(&"moisture", "Hygrometer", "Moisture: HIGH", "clear", &"cloudburst", true, false),
+			reading(&"cloud_motion", "Cloudscope", "Clouds: DENSE, movement uncertain", "imprecise", &"cloudburst", true, false),
+			reading(&"crystal", "Crystal Spectrometer", "Crystal shimmer: HIGH", "faulty", &"glasswind", true, true),
+			network_reading(&"condensation", "Harbor Reservoir Gauge", "Condensation: NETWORK READING PENDING", &"cloudburst", &"moisture", &"harbor", "Condensation: RISING FAST", "clear"),
+		],
+		"actions": [
+			{"id": &"ridge_profile", "label": "Route ridge condensation profile", "cost": 3, "requires_relay": &"ridge", "reveals": &"ridge_profile", "value": "Ridge profile: condensation climbing", "quality": "clear", "supports": &"cloudburst", "log": "The High Ridge route confirms climbing condensation over the eastern basin."},
+			{"id": &"industrial_runoff", "label": "Poll Industrial runoff telemetry", "cost": 1, "requires_relay": &"industrial", "reveals": &"industrial_runoff", "value": "Industrial runoff channels: RISING", "quality": "clear", "supports": &"cloudburst", "log": "The Industrial alternate route reports rapidly rising runoff channels."},
+		],
+		"outcome_note": "High moisture, dense slow clouds, and rising condensation identify a severe Cloudburst. The crystal shimmer was ice contamination, not Glasswind.",
 	}
 
 static func reading(id: StringName, instrument: String, value: String, quality: String, supports: StringName, visible: bool, faulty: bool) -> Dictionary:

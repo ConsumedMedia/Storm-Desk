@@ -1,6 +1,6 @@
 # Storm Desk
 
-Storm Desk is a playable three-day Godot prototype about operating a weather bureau for floating islands. Each day asks the player to interpret fictional weather evidence, decide whether limited sensor requests are worth their budget and warning-time cost, classify the hazard, and warn selected districts. The result explains the true evidence and every trust, budget, and damage change.
+Storm Desk is a playable five-day Godot prototype about operating a weather bureau for floating islands. Each day asks the player to interpret fictional weather evidence, decide whether limited sensor requests are worth their budget and warning-time cost, classify the hazard, and warn selected districts. The result explains the true evidence and every trust, budget, and damage change.
 
 ## Requirements and launch
 
@@ -26,7 +26,7 @@ No dependencies, plugins, asset downloads, autoloads, or external services are r
 6. Continue to the Warning Desk. Choose a hazard (or stand down), severity, and districts.
 7. Review and confirm the warning. Choices can be changed until confirmation.
 8. Read the calculation-backed daily report, then continue.
-9. After Day Three, review the final report or restart without closing the application.
+9. After Day Five, review the first-week report or restart without closing the application.
 
 Mouse and keyboard focus navigation are supported by standard Godot Controls. The interface does not rely on color alone: phases, qualities, disabled actions, and warnings are labeled in text.
 
@@ -35,6 +35,8 @@ Mouse and keyboard focus navigation are supported by standard Godot Controls. Th
 - Day One: complete Sparkstorm teaching loop with all essential evidence
 - Day Two: Glasswind scenario with one request available from two network options
 - Day Three: Cloudburst scenario with a faulty charge reading, two requests available from three options, and a warning-time tradeoff
+- Day Four: Glasswind recovery scenario with an opening relay outage and a repair-versus-reroute decision
+- Day Five: severe Cloudburst finale whose evidence options reflect the network routes built during the week
 - Three distinct data-driven districts and hazards
 - Persistent five-site sensor/relay graph with fixed build locations, selectable nodes, one relay and one sensor slot per remote site, alternate routing, and labeled connection state
 - Electrical, crystal, and moisture sensor installation; relay installation; connected reading collection; damaged-equipment repair
@@ -55,9 +57,9 @@ Run the repository-native checks without installing a test framework:
 godot --headless --path . --script res://tests/run_tests.gd
 ```
 
-The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, outages, repairs, persistent hazard damage, network-driven evidence, guided-tour progression, required interactions, skip, local completion preference, all three coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-15 passed 47 checks with exit code 0 under Godot 4.7.1.
+The suite validates hazard evaluation, district vulnerability, warning timing, damage reduction, trust and budget changes, deterministic scenarios, relay connectivity, sensor installation, alternate routing, opening outages, repairs, persistent hazard damage, network-driven evidence, guided-tour progression, required interactions, skip, local completion preference, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-15 passed 62 checks with exit code 0 under Godot 4.7.1.
 
-`tests/capture_ui.gd` and `tests/capture_tutorial.gd` are visual-QA helpers. Run them with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical UI bounds.
+`tests/capture_ui.gd` and `tests/capture_tutorial.gd` are visual-QA helpers. Run them with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical UI bounds. The main UI capture uses the dense Day Four recovery screen.
 
 ## Repository structure
 
@@ -70,7 +72,7 @@ The suite validates hazard evaluation, district vulnerability, warning timing, d
 
 ## Known limitations
 
-- The prototype uses three fixed scenarios and has no save/load.
+- The prototype uses five fixed scenarios and has no save/load.
 - Scenario records are centralized in typed GDScript dictionaries; hazards and districts are standalone custom Resources.
 - The district map remains a structured board; network construction uses a fixed-node graph rather than free placement or terrain simulation.
 - The UI is tuned for a 1280×720 reference window; very small windows are not a target.

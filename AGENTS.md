@@ -2,7 +2,7 @@
 
 ## Purpose and phase
 
-This repository contains the playable Storm Desk three-day Godot 4.7.x prototype. Its current purpose is to test whether incomplete fictional weather evidence, scarce observations, network planning, and consequential warnings form an enjoyable 15–20 minute decision loop. The vertical slice is implemented; the next phase is structured playtesting and iteration, not commercial production.
+This repository contains the playable Storm Desk five-day Godot 4.7.x prototype. Its current purpose is to test whether incomplete fictional weather evidence, scarce observations, persistent network planning, and consequential warnings form an enjoyable 25–35 minute first-week loop. The contained first-week milestone is implemented; the next phase is structured playtesting and iteration, not commercial production.
 
 ## Implementation rules
 
