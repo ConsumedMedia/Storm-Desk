@@ -1,5 +1,9 @@
 extends SceneTree
 
+const SESSION_SAVE_SCRIPT: Script = preload("res://scripts/simulation/session_save.gd")
+const MAIN_TEST_SAVE_PATH: String = "user://storm_desk_main_test.cfg"
+const INVALID_TEST_SAVE_PATH: String = "user://storm_desk_invalid_test.cfg"
+
 var failures: int = 0
 var checks: int = 0
 
@@ -98,6 +102,12 @@ func run_all() -> void:
 	alternate_network.damage_relay(&"ridge")
 	check(alternate_network.has_online_sensor(&"harbor", &"moisture"), "Industrial relay provides an alternate Harbor route")
 	check(alternate_network.has_online_sensor(&"farmland", &"crystal"), "Industrial relay provides an alternate Farm Spire route")
+	var network_snapshot: Dictionary = alternate_network.snapshot()
+	var restored_network := NetworkModel.new()
+	check(restored_network.restore_snapshot(network_snapshot) and str(restored_network.snapshot()) == str(network_snapshot), "Network equipment and health round-trip through a save snapshot")
+	var malformed_network_snapshot: Dictionary = network_snapshot.duplicate(true)
+	(malformed_network_snapshot["equipment"] as Array).pop_back()
+	check(not restored_network.restore_snapshot(malformed_network_snapshot), "Network restoration rejects incomplete site data")
 	var opening_network := NetworkModel.new()
 	var opening_events: Array[String] = opening_network.apply_opening_damage(days[3]["opening_damage"] as Array)
 	check(not opening_events.is_empty() and not opening_network.online_relays().has(&"ridge"), "Day Four opening damage disables High Ridge deterministically")
@@ -121,7 +131,28 @@ func run_all() -> void:
 
 	var main_scene: PackedScene = load("res://scenes/main/main.tscn") as PackedScene
 	var main: Control = main_scene.instantiate() as Control
+	SESSION_SAVE_SCRIPT.delete(MAIN_TEST_SAVE_PATH)
+	main.set("save_path", MAIN_TEST_SAVE_PATH)
 	root.add_child(main)
+	var initial_save_result: Dictionary = SESSION_SAVE_SCRIPT.read(MAIN_TEST_SAVE_PATH) as Dictionary
+	check(bool(initial_save_result.get("ok", false)), "Starting a new first week creates a local autosave")
+	var incompatible_config := ConfigFile.new()
+	incompatible_config.set_value("meta", "format_version", 999)
+	incompatible_config.set_value("session", "state", initial_save_result.get("state", {}))
+	incompatible_config.save(INVALID_TEST_SAVE_PATH)
+	var incompatible_result: Dictionary = SESSION_SAVE_SCRIPT.read(INVALID_TEST_SAVE_PATH) as Dictionary
+	check(not bool(incompatible_result.get("ok", false)) and str(incompatible_result.get("error", "")).contains("unsupported format"), "Save loader rejects incompatible format versions safely")
+	SESSION_SAVE_SCRIPT.delete(INVALID_TEST_SAVE_PATH)
+	var corrupt_file: FileAccess = FileAccess.open(INVALID_TEST_SAVE_PATH, FileAccess.WRITE)
+	corrupt_file.store_string("[this is not a valid ConfigFile")
+	corrupt_file.close()
+	var corrupt_result: Dictionary = SESSION_SAVE_SCRIPT.read(INVALID_TEST_SAVE_PATH) as Dictionary
+	check(not bool(corrupt_result.get("ok", false)) and not bool(corrupt_result.get("missing", true)), "Save loader rejects unreadable files without treating them as absent")
+	SESSION_SAVE_SCRIPT.delete(INVALID_TEST_SAVE_PATH)
+	var malformed_state: Dictionary = (initial_save_result.get("state", {}) as Dictionary).duplicate(true)
+	malformed_state["day_index"] = 99
+	var malformed_save_errors: Array[String] = main.call("validate_saved_state", malformed_state) as Array[String]
+	check(errors_contain(malformed_save_errors, "outside the current scenario catalog"), "Save validator rejects out-of-range campaign state")
 	var original_budget: int = int(main.get("budget"))
 	var original_used: int = int(main.get("observations_used"))
 	main.call("set_phase", 1) # Observation: network requests are invalid here.
@@ -145,6 +176,9 @@ func run_all() -> void:
 	check(warning_summary.text.contains("SPARKSTORM") and warning_summary.text.contains("Industrial"), "Warning desk presents a live hazard and district summary")
 	var feedback_label: Label = main.get("action_feedback_label") as Label
 	check(feedback_label.text.contains("Added warning marker"), "Footer provides immediate warning-selection feedback")
+	var draft_save_result: Dictionary = SESSION_SAVE_SCRIPT.read(MAIN_TEST_SAVE_PATH) as Dictionary
+	var draft_save_state: Dictionary = draft_save_result.get("state", {}) as Dictionary
+	check(StringName(draft_save_state.get("selected_hazard", &"")) == &"sparkstorm" and (draft_save_state.get("warned_districts", []) as Array).has(&"industrial"), "Autosave records the editable warning draft")
 	main.call("confirm_warning")
 	check((main.get("reports") as Array).size() == 1 and int(main.get("day_index")) == 0, "Coordinator resolves Day One and records its report")
 	check(node_contains_text(main.get("modal_layer") as Node, "ASSESSMENT: EFFECTIVE WARNING"), "Daily report opens with a plain-language outcome assessment")
@@ -158,6 +192,11 @@ func run_all() -> void:
 	main.call("select_network_site", &"farmland")
 	main.call("install_network_equipment", crystal_selector)
 	check(int(main.get("maintenance_actions_used")) == 1 and int(main.get("observations_used")) == 0, "Overnight construction uses maintenance without consuming daily observation capacity")
+	var maintenance_save_result: Dictionary = SESSION_SAVE_SCRIPT.read(MAIN_TEST_SAVE_PATH) as Dictionary
+	var maintenance_save_state: Dictionary = maintenance_save_result.get("state", {}) as Dictionary
+	var saved_maintenance_network := NetworkModel.new()
+	var maintenance_network_restored: bool = saved_maintenance_network.restore_snapshot(maintenance_save_state.get("network", {}) as Dictionary)
+	check(int(maintenance_save_state.get("maintenance_actions_used", 0)) == 1 and maintenance_network_restored and saved_maintenance_network.has_online_sensor(&"farmland", &"crystal"), "Autosave records overnight action use and installed equipment")
 	var budget_after_first_maintenance: int = int(main.get("budget"))
 	main.call("select_network_site", &"industrial")
 	var relay_selector := OptionButton.new()
@@ -170,6 +209,18 @@ func run_all() -> void:
 	main.call("collect_connected_readings")
 	check(int(main.get("observations_used")) == 1, "Day Two spends daily capacity collecting from the overnight sensor")
 	check(str(reading_by_id(main.get("readings") as Array, &"crystal").get("quality", "missing")) == "clear", "Connected Crystal Sensor reveals the missing Day Two evidence")
+	var day_two_save_result: Dictionary = SESSION_SAVE_SCRIPT.read(MAIN_TEST_SAVE_PATH) as Dictionary
+	var day_two_save_state: Dictionary = day_two_save_result.get("state", {}) as Dictionary
+	var resumed_main: Control = main_scene.instantiate() as Control
+	resumed_main.set("save_path", MAIN_TEST_SAVE_PATH)
+	root.add_child(resumed_main)
+	check(node_contains_text(resumed_main.get("modal_layer") as Node, "CONTINUE FIRST WEEK"), "A later launch offers Resume and Start New for a valid autosave")
+	resumed_main.call("close_modal")
+	resumed_main.call("restore_session", day_two_save_state)
+	var resumed_network: NetworkModel = resumed_main.get("network_model") as NetworkModel
+	check(int(resumed_main.get("day_index")) == 1 and int(resumed_main.get("phase")) == 2 and int(resumed_main.get("observations_used")) == 1, "Resume restores the exact Day Two phase and spent observation capacity")
+	check(str(reading_by_id(resumed_main.get("readings") as Array, &"crystal").get("quality", "missing")) == "clear" and resumed_network.has_online_sensor(&"farmland", &"crystal"), "Resume restores revealed evidence and persistent network equipment")
+	resumed_main.queue_free()
 	main.call("set_phase", 3)
 	main.call("on_hazard_selected", 2) # Glasswind
 	main.call("on_district_toggled", true, &"farmland")
@@ -233,11 +284,13 @@ func run_all() -> void:
 	check((main.get("reports") as Array).size() == 5 and int(main.get("day_index")) == 4, "Coordinator completes all five first-week scenarios")
 	main.call("show_final_report")
 	check(int(main.get("phase")) == 7, "Coordinator reaches the five-day performance report")
+	check(not SESSION_SAVE_SCRIPT.exists(MAIN_TEST_SAVE_PATH), "Completing the first week clears its resumable autosave")
 	main.set("budget", 1)
 	main.set("trust", 2)
 	main.call("restart_session")
 	check(int(main.get("budget")) == 30 and int(main.get("trust")) == 50 and int(main.get("day_index")) == 0, "Restart resets the session without restarting the application")
 	check(StringName((main.get("network_model") as NetworkModel).equipment_at(&"farmland").get("sensor", &"")) == &"", "Restart resets persistent network construction")
+	check(SESSION_SAVE_SCRIPT.exists(MAIN_TEST_SAVE_PATH), "Restart creates a fresh Day One autosave")
 
 	var tutorial: TutorialController = main.get("tutorial_controller") as TutorialController
 	tutorial.persistence_enabled = false
@@ -278,6 +331,8 @@ func run_all() -> void:
 		DirAccess.remove_absolute(tutorial_test_path)
 	persistence_test.queue_free()
 	main.queue_free()
+	SESSION_SAVE_SCRIPT.delete(MAIN_TEST_SAVE_PATH)
+	SESSION_SAVE_SCRIPT.delete(INVALID_TEST_SAVE_PATH)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)

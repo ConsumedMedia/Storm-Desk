@@ -105,3 +105,11 @@ Reason: adding or revising days should not require editing a large GDScript cata
 This supersedes the storage portion of “Use deterministic authored days”; scenarios remain deterministic and fixed, but their source records are now custom Resources rather than catalog functions.
 
 Alternatives considered: separate Resource classes for every nested reading/action, JSON files, a custom editor plugin, or procedural generation. Deferred because the current hybrid stays dependency-free, compact, Inspector-editable, and compatible with the proven runtime boundary.
+
+## 2026-08-16 — Use one validated local autosave
+
+Decision: autosave the active first week after completed actions and phase changes to a versioned `ConfigFile`. On launch, offer Resume or Start New; validate all session, authored-ID, and network fields before mutating runtime state; clear the resumable file when the final report opens; and create a fresh save when the player restarts.
+
+Reason: a 25–35 minute campaign should survive an interrupted session without adding account infrastructure or a save-management screen. Reconstructing authored scenario truth from the current catalog keeps content updates authoritative, while persisting transient evidence, costs, warning choices, reports, outage history, and network health prevents duplicated actions or lost consequences.
+
+Alternatives considered: manual checkpoints, multiple named slots, binary serialization, cloud storage, or persisting complete scenario records. Deferred because a single transparent local slot covers the prototype need with readable built-in tooling and a smaller compatibility surface.

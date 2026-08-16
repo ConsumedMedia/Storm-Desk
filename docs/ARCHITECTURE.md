@@ -4,7 +4,7 @@
 
 `scenes/main/main.tscn` is a minimal full-window Control root. `scripts/ui/main_controller.gd` creates the container-based interface and coordinates the session. There are no autoloads.
 
-The coordinator owns transient session state: day index, explicit phase enum, budget, trust, observation usage/spend, nightly maintenance usage, applied opening-event days, current readings, warning choices, resolved district presentation states, accumulated reports, and one persistent `NetworkModel`. Modal panels provide briefing, help, confirmation, daily results, next-day outlooks, and the final report. It exposes named tutorial targets and emits phase/interaction signals, but does not own tour sequencing. Standard Godot controls provide focus and disabled-state behavior.
+The coordinator owns transient session state: day index, explicit phase enum, budget, trust, observation usage/spend, nightly maintenance usage, applied opening-event days, current readings, warning choices, resolved district presentation states, accumulated reports, and one persistent `NetworkModel`. It serializes this state through `SessionSave` after completed actions and phase changes. Modal panels provide startup resume/new-week choice, briefing, help, confirmation, daily results, next-day outlooks, and the final report. It exposes named tutorial targets and emits phase/interaction signals, but does not own tour sequencing. Standard Godot controls provide focus and disabled-state behavior.
 
 ## State flow
 
@@ -22,6 +22,8 @@ The phase enum is explicit:
 
 Overnight Maintenance was appended to preserve the existing tutorial-facing phase identifiers, but it occurs after Daily Report on Days One through Four; Day Five proceeds directly to Final Report. `set_phase()` is the single presentation transition point. It updates the phase label, required next action, active panel, footer note, and continue-button state. Warning choices remain editable until confirmation.
 
+On startup, the coordinator builds a clean Day One presentation without writing it, then reads and validates the local session. A valid save opens a blocking Resume/Start New choice. Resume reconstructs the current scenario from the catalog, applies saved transient fields and network state, synchronizes controls, and reopens any required briefing, confirmation, report, or maintenance modal. Invalid or incompatible data is deleted before a fresh week can begin.
+
 ## Simulation boundary
 
 - `hazard_definition.gd` and `district_definition.gd` define typed custom Resource schemas.
@@ -29,6 +31,7 @@ Overnight Maintenance was appended to preserve the existing tutorial-facing phas
 - `resources/districts/*.tres` contains descriptions, base damage, and per-hazard vulnerability multipliers.
 - `scenario_definition.gd` defines the Inspector-editable top-level day schema. `resources/scenarios/*.tres` contains briefing and outlook copy, ground truth, readings with quality metadata, network actions, capacity, safe-action timing limits, evidence explanations, and optional authored opening damage.
 - `scenario_catalog.gd` loads the five scenario paths in deterministic order, validates them, and converts each Resource to the existing runtime Dictionary boundary. `scenario_validator.gd` rejects missing copy, non-sequential or duplicate days, unknown hazards/districts/network references, malformed readings/actions/opening damage, invalid timing limits, and initially visible evidence that favors a different hazard.
+- `session_save.gd` owns the versioned `ConfigFile` format at `user://storm_desk_session.cfg`, safe read/write/delete operations, and structural/cross-reference validation. Saves contain only current session state and authored IDs; current scenario definitions always come from `ScenarioCatalog`.
 - `network_model.gd` owns five fixed sites, graph edges, relay reachability, sensor/relay slots, equipment health, installation, alternate routing, repairs, authored opening outages, and persistent hazard damage. Bureau HQ and healthy connected relays form the traversal graph; a sensor is available when its site touches that graph.
 - `network_diagram.gd` is a replaceable Control view of `NetworkModel`. It draws labeled nodes and edges, accepts site selection, and never owns simulation truth.
 - `atmosphere_backdrop.gd` is a replaceable, input-transparent Control that draws a subtle phase-colored gradient and moving wind traces. It owns no gameplay state.
@@ -53,6 +56,8 @@ The starter network contains Bureau HQ, a healthy High Ridge relay, and an Indus
 
 Each overnight phase permits at most one installation or repair at its displayed budget cost. It does not consume the following day's capacity, and new sensors do not deliver forecast evidence until the player spends a daily action to collect connected readings. During Network Planning, only collection and scenario surveys consume observation capacity and influence warning timing. Equipment state persists across days; restart restores only the starter network.
 
+`NetworkModel.snapshot()` serializes every fixed site's relay/sensor occupancy and health. `restore_snapshot()` validates all sites and fields into a temporary dictionary before replacing live equipment, so partial or malformed network data cannot mutate the session.
+
 Missed protection has infrastructure consequences: Sparkstorms can damage the Industrial sensor, Glasswind can damage High Ridge, and Cloudbursts can damage Harbor equipment. Day Four's clearly forecast High Ridge outage is applied once when the preceding maintenance desk opens, with `load_day()` as a fallback for direct/test transitions. Correct timely warnings to the relevant district protect hazard-exposed equipment. The daily calculation report records hazard damage, the event log records maintenance spending, and the final report lists the remaining network.
 
 ## Adding content
@@ -68,4 +73,4 @@ Nested reading, action, and opening-damage records intentionally remain Dictiona
 
 ## Tests
 
-`tests/run_tests.gd` is a dependency-free SceneTree test runner. Its 85 checks cover valid scenario resources, malformed authoring rejection, simulation calculations, deterministic ordering, graph connectivity, nightly installation limits, separate action pools, alternate routes, authored and hazard-driven outages, repair, persistent equipment, network-driven evidence, invalid-action guards, labeled warning/protected states, draft summaries, assessment-led reports, tutorial progression/required actions/skip/persistence, all five coordinator-driven day resolutions, final report, and restart. Five graphics-backed 1280×720 helpers capture Day Four recovery, maintenance, warning selection, daily results, and onboarding. All save ignored output and assert critical states or viewport bounds.
+`tests/run_tests.gd` is a dependency-free SceneTree test runner. Its 98 checks cover save creation/corruption/version rejection/state validation, network snapshot round-trips, warning and maintenance autosaves, launch prompting, exact Day Two restoration, completion clearing, valid scenario resources, malformed authoring rejection, simulation calculations, graph behavior, persistent equipment, UI feedback, tutorial persistence, all five coordinator-driven day resolutions, final report, and restart. Six graphics-backed 1280×720 helpers capture Day Four recovery, maintenance, warning selection, daily results, onboarding, and the resume prompt. Every harness uses an isolated `user://` save path, saves ignored visual output, and asserts critical states or viewport bounds.

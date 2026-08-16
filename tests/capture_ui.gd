@@ -1,10 +1,20 @@
 extends SceneTree
 
+const SAVE_PATH: String = "user://storm_desk_capture_ui.cfg"
+
 var frame_count: int = 0
 
 func _init() -> void:
 	var packed: PackedScene = load("res://scenes/main/main.tscn") as PackedScene
-	root.add_child(packed.instantiate())
+	remove_test_save()
+	var main: Node = packed.instantiate()
+	main.set("save_path", SAVE_PATH)
+	root.add_child(main)
+
+func remove_test_save() -> void:
+	var absolute_path: String = ProjectSettings.globalize_path(SAVE_PATH)
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(absolute_path)
 
 func _process(_delta: float) -> bool:
 	frame_count += 1
@@ -52,5 +62,6 @@ func _process(_delta: float) -> bool:
 		quit(1)
 		return true
 	print("Saved UI capture: res://.godot/ui-capture.png")
+	remove_test_save()
 	quit(0)
 	return true

@@ -8,6 +8,8 @@ The player operates a small weather bureau serving three inhabited floating-isla
 
 First-time players receive an optional guided bureau tour after the Day One briefing. It follows the live daily flow, focuses one interface area at a time, and requires real district, phase, hazard, and warning-district interactions without choosing answers or spending resources on the player's behalf. Completion can be skipped and replayed.
 
+An interrupted first week autosaves locally after completed actions and phase changes. The next launch offers a choice to resume the exact desk state or replace it with a new week; completed weeks do not remain as resumable history.
+
 ## Daily loop
 
 Briefing → inspect local readings → decide whether to spend on remote observations → classify the hazard and severity → choose districts → confirm → resolve → understand the calculation → review the next-day outlook and optionally maintain the network.

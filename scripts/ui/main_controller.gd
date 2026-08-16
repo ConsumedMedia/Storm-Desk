@@ -16,6 +16,9 @@ const COLOR_TEXT := Color("eaf1f5")
 const COLOR_MUTED := Color("aebfca")
 const MAINTENANCE_ACTION_LIMIT := 1
 const ATMOSPHERE_BACKDROP_SCRIPT := preload("res://scripts/ui/atmosphere_backdrop.gd")
+const SESSION_SAVE_SCRIPT: Script = preload("res://scripts/simulation/session_save.gd")
+
+@export var save_path: String = "user://storm_desk_session.cfg"
 
 var hazards: Array[HazardDefinition] = []
 var districts: Array[DistrictDefinition] = []
@@ -38,6 +41,7 @@ var maintenance_actions_used: int = 0
 var opening_damage_applied_days: Array[int] = []
 var selected_district: StringName = &""
 var district_outcomes: Dictionary = {}
+var autosave_suspended: bool = true
 
 var atmosphere: Control
 var header_panel: PanelContainer
@@ -79,7 +83,7 @@ func _ready() -> void:
 	tutorial_controller = TutorialController.new()
 	add_child(tutorial_controller)
 	tutorial_controller.setup(self, tutorial_target)
-	restart_session()
+	initialize_session()
 
 func build_interface() -> void:
 	atmosphere = ATMOSPHERE_BACKDROP_SCRIPT.new() as Control
@@ -277,7 +281,37 @@ func build_warning_controls() -> void:
 	warning_status_panel.add_child(warning_summary_label)
 	warning_box.add_child(warning_status_panel)
 
+func initialize_session() -> void:
+	autosave_suspended = true
+	reset_session_state()
+	load_day()
+	var load_result: Dictionary = SESSION_SAVE_SCRIPT.read(save_path) as Dictionary
+	if bool(load_result.get("ok", false)):
+		var saved_state: Dictionary = load_result.get("state", {}) as Dictionary
+		var save_errors: Array[String] = validate_saved_state(saved_state)
+		if save_errors.is_empty():
+			show_resume_prompt(saved_state)
+			return
+		SESSION_SAVE_SCRIPT.delete(save_path)
+		show_invalid_save("The saved first week is incompatible with the current game data:\n\n- %s" % "\n- ".join(save_errors))
+		return
+	if not bool(load_result.get("missing", false)):
+		SESSION_SAVE_SCRIPT.delete(save_path)
+		show_invalid_save(str(load_result.get("error", "The saved first week could not be restored.")))
+		return
+	autosave_suspended = false
+	autosave_session()
+
 func restart_session() -> void:
+	SESSION_SAVE_SCRIPT.delete(save_path)
+	autosave_suspended = true
+	reset_session_state()
+	load_day()
+	autosave_suspended = false
+	autosave_session()
+	show_action_feedback("New first week started  •  Progress autosaves locally", COLOR_ACCENT)
+
+func reset_session_state() -> void:
 	budget = 30
 	trust = 50
 	day_index = 0
@@ -289,9 +323,10 @@ func restart_session() -> void:
 	selected_district = &""
 	action_feedback_label.text = ""
 	event_log.text = ""
-	load_day()
 
 func load_day() -> void:
+	var previous_autosave_state: bool = autosave_suspended
+	autosave_suspended = true
 	scenario = scenarios[day_index].duplicate(true)
 	readings.clear()
 	for item: Dictionary in scenario["readings"]:
@@ -317,6 +352,170 @@ func load_day() -> void:
 		"Begin observations",
 		begin_observations
 	)
+	autosave_suspended = previous_autosave_state
+	autosave_session()
+
+func show_morning_briefing() -> void:
+	show_modal(
+		"MORNING BRIEFING - DAY %d" % int(scenario["day"]),
+		"%s\n\n%s" % [str(scenario["briefing"]), str(scenario["tutorial"])],
+		"Begin observations",
+		begin_observations
+	)
+
+func show_maintenance_modal() -> void:
+	if day_index >= scenarios.size() - 1:
+		return
+	var next_scenario: Dictionary = scenarios[day_index + 1]
+	var body: String = "%s\n\nYou may install or repair one piece of network equipment tonight. The budget cost is immediate, but this work does not use tomorrow's observation capacity or make its warning late. You may also continue without acting.\n\nCURRENT NETWORK\n%s" % [str(next_scenario.get("outlook", "No outlook is available.")), network_model.summary()]
+	show_modal("OVERNIGHT OUTLOOK - DAY %d" % int(next_scenario["day"]), body, "Open maintenance desk", func() -> void: pass)
+
+func show_resume_prompt(saved_state: Dictionary) -> void:
+	var saved_day_index: int = int(saved_state.get("day_index", 0))
+	var saved_day: int = saved_day_index + 1
+	var saved_phase: int = int(saved_state.get("phase", Phase.MORNING_BRIEFING))
+	var body: String = "A local autosave is available.\n\nDay %d of %d\nPhase: %s\nBudget: %d\nTrust: %d\n\nResume returns to the last completed action or phase. Start New permanently replaces this saved week." % [saved_day, scenarios.size(), phase_resume_label(saved_phase), int(saved_state.get("budget", 30)), int(saved_state.get("trust", 50))]
+	show_modal("CONTINUE FIRST WEEK", body, "Resume saved week", restore_session.bind(saved_state), "Start new week", restart_session)
+
+func show_invalid_save(reason: String) -> void:
+	show_modal("SAVE UNAVAILABLE", "%s\n\nThe invalid save was removed. Start a new first week to continue safely." % reason, "Start new week", restart_session)
+
+func phase_resume_label(phase_value: int) -> String:
+	var labels: Dictionary = {
+		Phase.MORNING_BRIEFING: "Morning Briefing",
+		Phase.OBSERVATION: "Observation",
+		Phase.NETWORK_PLANNING: "Network Planning",
+		Phase.WARNING_DECISION: "Warning Decision",
+		Phase.WARNING_CONFIRMATION: "Warning Confirmation",
+		Phase.DAILY_REPORT: "Daily Report",
+		Phase.MAINTENANCE: "Overnight Maintenance",
+	}
+	return str(labels.get(phase_value, "Unknown"))
+
+func validate_saved_state(saved_state: Dictionary) -> Array[String]:
+	var hazard_ids: Array[StringName] = []
+	for hazard: HazardDefinition in hazards:
+		hazard_ids.append(hazard.id)
+	var district_ids: Array[StringName] = []
+	for district: DistrictDefinition in districts:
+		district_ids.append(district.id)
+	var site_ids: Array[StringName] = []
+	for site: Dictionary in network_model.sites:
+		site_ids.append(StringName(site.get("id", &"")))
+	return SESSION_SAVE_SCRIPT.validate_state(saved_state, scenarios, hazard_ids, district_ids, site_ids) as Array[String]
+
+func build_save_state() -> Dictionary:
+	var used_action_ids: Array[StringName] = []
+	for action: Dictionary in scenario.get("actions", []) as Array:
+		if bool(action.get("used", false)):
+			used_action_ids.append(StringName(action.get("id", &"")))
+	return {
+		"day_index": day_index,
+		"phase": int(phase),
+		"budget": budget,
+		"trust": trust,
+		"observations_used": observations_used,
+		"observation_spend": observation_spend,
+		"selected_hazard": selected_hazard,
+		"selected_severity": selected_severity,
+		"warned_districts": warned_districts.duplicate(),
+		"reports": reports.duplicate(true),
+		"maintenance_actions_used": maintenance_actions_used,
+		"opening_damage_applied_days": opening_damage_applied_days.duplicate(),
+		"selected_district": selected_district,
+		"district_outcomes": district_outcomes.duplicate(true),
+		"selected_network_site": selected_network_site,
+		"readings": readings.duplicate(true),
+		"used_action_ids": used_action_ids,
+		"network": network_model.snapshot(),
+		"event_log": event_log.text,
+	}
+
+func autosave_session() -> void:
+	if autosave_suspended or scenario.is_empty() or network_model == null:
+		return
+	if phase == Phase.STORM_RESOLUTION or phase == Phase.FINAL_REPORT:
+		return
+	var save_error: Error = SESSION_SAVE_SCRIPT.write(build_save_state(), save_path) as Error
+	if save_error != OK:
+		push_error("Session autosave failed with error %d at %s." % [save_error, save_path])
+
+func restore_session(saved_state: Dictionary) -> void:
+	var save_errors: Array[String] = validate_saved_state(saved_state)
+	if not save_errors.is_empty():
+		SESSION_SAVE_SCRIPT.delete(save_path)
+		show_invalid_save("The saved first week became incompatible:\n\n- %s" % "\n- ".join(save_errors))
+		return
+	autosave_suspended = true
+	day_index = int(saved_state["day_index"])
+	scenario = scenarios[day_index].duplicate(true)
+	var used_action_ids: Array = saved_state["used_action_ids"] as Array
+	for action: Dictionary in scenario.get("actions", []) as Array:
+		action["used"] = used_action_ids.has(StringName(action.get("id", &"")))
+	readings.clear()
+	for reading_value: Variant in saved_state["readings"] as Array:
+		readings.append((reading_value as Dictionary).duplicate(true))
+	budget = int(saved_state["budget"])
+	trust = int(saved_state["trust"])
+	observations_used = int(saved_state["observations_used"])
+	observation_spend = int(saved_state["observation_spend"])
+	selected_hazard = StringName(saved_state.get("selected_hazard", &""))
+	selected_severity = int(saved_state["selected_severity"])
+	warned_districts.clear()
+	for district_value: Variant in saved_state["warned_districts"] as Array:
+		warned_districts.append(StringName(district_value))
+	reports.clear()
+	for report_value: Variant in saved_state["reports"] as Array:
+		reports.append((report_value as Dictionary).duplicate(true))
+	maintenance_actions_used = int(saved_state["maintenance_actions_used"])
+	opening_damage_applied_days.clear()
+	for day_value: Variant in saved_state["opening_damage_applied_days"] as Array:
+		opening_damage_applied_days.append(int(day_value))
+	selected_district = StringName(saved_state.get("selected_district", &""))
+	district_outcomes.clear()
+	var saved_outcomes: Dictionary = saved_state["district_outcomes"] as Dictionary
+	for district_key: Variant in saved_outcomes:
+		district_outcomes[StringName(district_key)] = str(saved_outcomes[district_key])
+	selected_network_site = StringName(saved_state.get("selected_network_site", &"ridge"))
+	if not network_model.restore_snapshot(saved_state["network"] as Dictionary):
+		SESSION_SAVE_SCRIPT.delete(save_path)
+		reset_session_state()
+		load_day()
+		show_invalid_save("The saved network state could not be restored.")
+		return
+	event_log.text = str(saved_state["event_log"])
+	sync_restored_controls()
+	var restored_phase: Phase = int(saved_state["phase"])
+	set_phase(restored_phase)
+	match restored_phase:
+		Phase.MORNING_BRIEFING:
+			show_morning_briefing()
+		Phase.WARNING_CONFIRMATION:
+			show_warning_confirmation()
+		Phase.DAILY_REPORT:
+			show_daily_report(reports.back())
+		Phase.MAINTENANCE:
+			show_maintenance_modal()
+	autosave_suspended = false
+	log_event("Saved session resumed at Day %d, %s." % [day_index + 1, phase_resume_label(int(phase))])
+	show_action_feedback("Session resumed  •  Progress autosaves locally", COLOR_ACCENT)
+	autosave_session()
+
+func sync_restored_controls() -> void:
+	for index: int in hazard_option.item_count:
+		if StringName(hazard_option.get_item_metadata(index)) == selected_hazard:
+			hazard_option.select(index)
+			break
+	severity_option.select(clampi(selected_severity - 1, 0, 2))
+	severity_option.disabled = selected_hazard == &""
+	for district: DistrictDefinition in districts:
+		var check: CheckBox = district_checks.get(district.id) as CheckBox
+		check.set_pressed_no_signal(warned_districts.has(district.id))
+		check.disabled = selected_hazard == &""
+	if selected_district == &"":
+		district_detail.text = "Select a district for vulnerability details."
+	else:
+		set_district_detail(district_by_id(selected_district))
 
 func begin_observations() -> void:
 	set_phase(Phase.OBSERVATION)
@@ -389,6 +588,7 @@ func set_phase(next_phase: Phase) -> void:
 	refresh_all()
 	animate_phase_transition()
 	phase_changed.emit(int(phase))
+	autosave_session()
 
 func refresh_all() -> void:
 	if phase == Phase.MAINTENANCE:
@@ -507,6 +707,7 @@ func select_network_site(site_id: StringName) -> void:
 	selected_network_site = site_id
 	log_event("Network site selected: %s" % network_model.site_label(site_id))
 	refresh_network_actions()
+	autosave_session()
 
 func install_network_equipment(selector: OptionButton) -> void:
 	if not can_take_maintenance_action():
@@ -533,6 +734,7 @@ func install_network_equipment(selector: OptionButton) -> void:
 		show_action_feedback("−%d budget  •  %s installed" % [cost, NetworkModel.SENSOR_LABELS[equipment_type]], COLOR_WARNING)
 	pulse_resource_label(budget_label, COLOR_WARNING)
 	refresh_all()
+	autosave_session()
 
 func repair_selected_site() -> void:
 	if not can_take_maintenance_action():
@@ -549,6 +751,7 @@ func repair_selected_site() -> void:
 	show_action_feedback("−3 budget  •  %s" % repair_message, COLOR_WARNING)
 	pulse_resource_label(budget_label, COLOR_WARNING)
 	refresh_all()
+	autosave_session()
 
 func collect_connected_readings() -> void:
 	if not can_take_network_action():
@@ -566,6 +769,7 @@ func collect_connected_readings() -> void:
 	pulse_resource_label(budget_label, COLOR_WARNING)
 	pulse_resource_label(capacity_label, COLOR_WARNING)
 	refresh_all()
+	autosave_session()
 
 func can_take_network_action() -> bool:
 	if phase != Phase.NETWORK_PLANNING:
@@ -654,6 +858,7 @@ func request_observation(action: Dictionary) -> void:
 	pulse_resource_label(budget_label, COLOR_WARNING)
 	pulse_resource_label(capacity_label, COLOR_WARNING)
 	refresh_all()
+	autosave_session()
 
 func on_continue_pressed() -> void:
 	match phase:
@@ -741,6 +946,7 @@ func advance_day() -> void:
 
 func show_final_report() -> void:
 	set_phase(Phase.FINAL_REPORT)
+	SESSION_SAVE_SCRIPT.delete(save_path)
 	var total_damage: int = 0
 	var correct_days: int = 0
 	var protected: int = 0
@@ -771,10 +977,12 @@ func on_hazard_selected(index: int) -> void:
 	refresh_district_markers()
 	refresh_warning_summary()
 	hazard_selection_made.emit()
+	autosave_session()
 
 func on_severity_selected(index: int) -> void:
 	selected_severity = int(severity_option.get_item_metadata(index))
 	refresh_warning_summary()
+	autosave_session()
 
 func on_district_toggled(enabled: bool, district_id: StringName) -> void:
 	if enabled and not warned_districts.has(district_id):
@@ -785,19 +993,25 @@ func on_district_toggled(enabled: bool, district_id: StringName) -> void:
 	refresh_warning_summary()
 	show_action_feedback("%s warning marker: %s" % ["Added" if enabled else "Removed", district_by_id(district_id).display_name], COLOR_WARNING if enabled else COLOR_MUTED)
 	district_warning_changed.emit()
+	autosave_session()
 
 func show_district(district: DistrictDefinition) -> void:
 	selected_district = district.id
-	district_detail.text = "%s\n\n%s\n\nVulnerability multipliers\nSparkstorm %.1fx  /  Glasswind %.1fx  /  Cloudburst %.1fx" % [district.display_name, district.description, district.vulnerability_for(&"sparkstorm"), district.vulnerability_for(&"glasswind"), district.vulnerability_for(&"cloudburst")]
+	set_district_detail(district)
 	log_event("Map selected: %s" % district.display_name)
 	refresh_district_markers()
 	district_inspected.emit()
+	autosave_session()
+
+func set_district_detail(district: DistrictDefinition) -> void:
+	district_detail.text = "%s\n\n%s\n\nVulnerability multipliers\nSparkstorm %.1fx  /  Glasswind %.1fx  /  Cloudburst %.1fx" % [district.display_name, district.description, district.vulnerability_for(&"sparkstorm"), district.vulnerability_for(&"glasswind"), district.vulnerability_for(&"cloudburst")]
 
 func show_help() -> void:
 	var lines: Array[String] = []
 	for hazard: HazardDefinition in hazards:
 		lines.append("%s\nEvidence: %s\nThreat: %s" % [hazard.display_name, hazard.evidence_summary, hazard.threat_summary])
 	var body := "FICTIONAL WEATHER RULES\n\n%s\n\nNETWORK\nSelect fixed sites on the diagram. HQ and healthy connected relays create a transmission path. Each site has one relay slot and one sensor slot. Overnight maintenance allows one installation or repair without using the next day's observation capacity. Daily Network Planning is for connected-reading collection and surveys; those actions can delay warning preparation. Equipment persists between days and can be damaged by a hazard or a briefed outage. R / R! marks healthy or damaged relays; E, C, and M mark sensor types.\n\nDAILY LOOP\nBriefing → Observation → Network Planning → Warning → Resolution → Overnight Maintenance. Each briefing states the day's capacity and whether taking a second observation will make the warning late.\n\nWarnings require a hazard, severity, and districts. False warnings cost trust; useful timely warnings reduce damage. Missing a threatened district causes full damage.\n\nReplay Guided Tour resets to Day One when necessary; it does not preserve the current run." % "\n\n".join(lines)
+	body += "\n\nAUTOSAVE\nStorm Desk saves locally after completed actions and phase changes. On the next launch, choose Resume to return to that state or Start New to replace it. Completing the five-day report clears the finished save."
 	show_modal("RULES / HELP", body, "Close", func() -> void: pass, "Replay guided tour", replay_guided_tour)
 
 func replay_guided_tour() -> void:

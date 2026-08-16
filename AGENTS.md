@@ -17,10 +17,11 @@ This repository contains the playable Storm Desk five-day Godot 4.7.x prototype.
 - Tutorial steps must never choose an answer, spend resources, or silently alter simulation state. Required gameplay actions must advance through host signals.
 - Do not hide action failures. Disable invalid actions and log an explanation when guard code rejects one.
 - Avoid autoloads unless a durable cross-scene need exists and document any added autoload in `docs/ARCHITECTURE.md`.
+- Keep session persistence versioned and local through `SessionSave`. Save authored IDs and transient state, reload scenario truth from `ScenarioCatalog`, validate before mutation, and keep tests/captures on isolated `user://` paths.
 
 ## Scope restrictions
 
-Do not add multiplayer, networking, accounts, external services, Steamworks, achievements, cloud saves, mod/workshop support, console/mobile work, localization, voice acting, branching narrative, characters, staff hiring, pathfinding, realistic fluid/weather simulation, a map editor, a large technology tree, monetization, DLC, or live-service systems without explicit approval.
+Do not add multiplayer, networking, accounts, external services, Steamworks, achievements, cloud saves, multiple save slots, mod/workshop support, console/mobile work, localization, voice acting, branching narrative, characters, staff hiring, pathfinding, realistic fluid/weather simulation, a map editor, a large technology tree, monetization, DLC, or live-service systems without explicit approval.
 
 ## Validation expectations
 

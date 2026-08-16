@@ -19,12 +19,13 @@ Last updated: 2026-08-16
 - Added a dedicated overnight maintenance phase after Days One through Four with next-day outlooks, one separate install-or-repair action, maintenance-first opening outages, and daily collection/survey capacity.
 - Added an interface feedback and atmosphere pass: code-drawn weather motion, phase accents, resource pulses, accessible network states, warning/result district markers, draft summaries, assessment-led reports, explicit button focus styling, and keyboard-focused modals.
 - Added a scenario-authoring system with five Inspector-editable day Resources, deterministic catalog conversion, and descriptive validation for ordering, references, nested records, timing, and evidence consistency.
-- Expanded to 85 dependency-free automated checks plus five graphics-backed 1280×720 regression captures covering Day Four, maintenance, warnings, results, and onboarding.
+- Added a versioned local autosave/resume system for complete coordinator and network state, launch-time Resume/Start New choice, corrupt/incompatible-save rejection, and completion cleanup.
+- Expanded to 98 dependency-free automated checks plus six graphics-backed 1280×720 regression captures covering Day Four, maintenance, warnings, results, onboarding, and resume choice.
 - Added actual implementation documentation.
 
 ## Current work
 
-The contained first-week, between-day maintenance, interface feedback, and scenario-authoring/validation milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
+The contained first-week, between-day maintenance, interface feedback, scenario-authoring/validation, and save/resume milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
 
 ## Remaining milestones
 
@@ -33,7 +34,7 @@ The contained first-week, between-day maintenance, interface feedback, and scena
 
 ## Deferred
 
-Final art/audio, save/load, longer campaign structure, procedural scenarios, staff systems, Steam integration, achievements, localization, accessibility narration, multiplayer, external services, monetization, and commercial production.
+Final art/audio, multiple save slots, cloud synchronization, longer campaign structure, procedural scenarios, staff systems, Steam integration, achievements, localization, accessibility narration, multiplayer, external services, monetization, and commercial production.
 
 ## Risks
 

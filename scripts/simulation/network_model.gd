@@ -34,6 +34,53 @@ func reset() -> void:
 	industrial["sensor"] = &"electrical"
 	industrial["sensor_health"] = 1
 
+func snapshot() -> Dictionary:
+	var entries: Array[Dictionary] = []
+	for site: Dictionary in sites:
+		var site_id: StringName = StringName(site["id"])
+		var gear: Dictionary = equipment_at(site_id)
+		entries.append({
+			"id": site_id,
+			"relay": bool(gear.get("relay", false)),
+			"relay_health": int(gear.get("relay_health", 0)),
+			"sensor": StringName(gear.get("sensor", &"")),
+			"sensor_health": int(gear.get("sensor_health", 0)),
+		})
+	return {"equipment": entries}
+
+func restore_snapshot(snapshot_data: Dictionary) -> bool:
+	var entries_value: Variant = snapshot_data.get("equipment")
+	if not entries_value is Array:
+		return false
+	var entries: Array = entries_value as Array
+	if entries.size() != sites.size():
+		return false
+	var restored: Dictionary = {}
+	for entry_value: Variant in entries:
+		if not entry_value is Dictionary:
+			return false
+		var entry: Dictionary = entry_value as Dictionary
+		var site_id: StringName = StringName(entry.get("id", &""))
+		if site_by_id(site_id).is_empty() or restored.has(site_id):
+			return false
+		if not entry.get("relay") is bool or not entry.get("relay_health") is int or not entry.get("sensor_health") is int:
+			return false
+		var relay_health: int = int(entry["relay_health"])
+		var sensor_health: int = int(entry["sensor_health"])
+		var sensor: StringName = StringName(entry.get("sensor", &""))
+		if relay_health < 0 or relay_health > 1 or sensor_health < 0 or sensor_health > 1:
+			return false
+		if sensor != &"" and not SENSOR_LABELS.has(sensor):
+			return false
+		restored[site_id] = {
+			"relay": bool(entry["relay"]),
+			"relay_health": relay_health,
+			"sensor": sensor,
+			"sensor_health": sensor_health,
+		}
+	equipment = restored
+	return true
+
 func site_by_id(site_id: StringName) -> Dictionary:
 	for site: Dictionary in sites:
 		if StringName(site["id"]) == site_id:

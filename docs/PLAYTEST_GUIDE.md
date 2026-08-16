@@ -17,8 +17,9 @@ Target session length: 25–35 minutes.
 7. On Day Three, note whether they recognize the charge conflict and whether they accept a late warning for more confidence.
 8. Before Day Four, ask whether they repair High Ridge, build the Industrial alternate route, or defer the outage, and record why.
 9. On Day Five, note whether they recognize how accumulated maintenance changes their available evidence routes.
-10. After each report, ask the player to explain why trust, budget, and damage changed before they continue.
-11. At the final report, ask them to restart and verify that the session returns to Day One without automatically replaying a completed tour.
+10. During Day Two or Three, close the game after a completed action, relaunch it, and ask the player to choose Resume. Verify the day, phase, evidence, resources, warning draft, and network match their recollection.
+11. After each report, ask the player to explain why trust, budget, and damage changed before they continue.
+12. At the final report, ask them to restart and verify that the session returns to Day One without offering the completed week or automatically replaying a completed tour.
 
 ## Observation sheet
 
@@ -48,6 +49,7 @@ Target session length: 25–35 minutes.
 - Was the Day Three time tradeoff understandable before confirming?
 - Did the pre-Day Four outage make repair and alternate routing feel meaningfully different?
 - Did Day Five make prior construction feel useful rather than mandatory?
+- Was the Resume/Start New choice clear, and did the resumed desk match the state you expected?
 - Did district vulnerabilities affect who you warned?
 - Were trust and budget consequences fair and legible?
 - Would you want a second week? What new decision should it add?
@@ -61,7 +63,8 @@ Target session length: 25–35 minutes.
 - Players understand why they lost or gained trust and budget after reading each report.
 - At least half of players make a materially different resource or warning choice from another participant.
 - Restart works and no invalid action fails silently.
+- Relaunching midweek offers resume, restores the expected state, and does not duplicate costs or actions.
 
 ## Validation baseline
 
-As of 2026-08-16, the automated suite passes 85 checks with exit code 0, including scenario-resource validation and malformed-content rejection, the five-day coordinator path, overnight action limits, separate maintenance/observation capacity, forecast opening outage, alternate routes, warning/protected markers, draft summaries, result assessments, persistent equipment, guided-tour progression, required interactions, skip, and preference persistence. The main scene runs under Godot 4.7.1; five GPU captures verify Day Four network recovery, maintenance, warning selection, daily results, and onboarding at 1280×720. The first-week, maintenance, interface-feedback, and scenario-authoring milestones are complete; human fun, pacing, comprehension, and balance remain unvalidated until structured playtesting occurs.
+As of 2026-08-16, the automated suite passes 98 checks with exit code 0, including corrupt/versioned save validation, network snapshot round-trips, autosave state, launch prompting, exact mid-day resume, completion cleanup, scenario-resource validation, the five-day coordinator path, overnight limits, alternate routes, warning feedback, guided-tour persistence, and restart. The main scene runs under Godot 4.7.1; six GPU captures verify Day Four network recovery, maintenance, warning selection, daily results, onboarding, and resume choice at 1280×720. The first-week, maintenance, interface-feedback, scenario-authoring, and save/resume milestones are complete; human fun, pacing, comprehension, balance, and resume clarity remain unvalidated until structured playtesting occurs.
