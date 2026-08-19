@@ -8,8 +8,8 @@ signal district_warning_changed
 enum Phase { MORNING_BRIEFING, OBSERVATION, NETWORK_PLANNING, WARNING_DECISION, WARNING_CONFIRMATION, STORM_RESOLUTION, DAILY_REPORT, FINAL_REPORT, MAINTENANCE }
 
 const COLOR_BG := Color("101925")
-const COLOR_PANEL := Color("1a2a3a")
-const COLOR_PANEL_ALT := Color("22384a")
+const COLOR_PANEL := Color(0.102, 0.165, 0.227, 0.94)
+const COLOR_PANEL_ALT := Color(0.133, 0.220, 0.290, 0.94)
 const COLOR_ACCENT := Color("55c2b5")
 const COLOR_WARNING := Color("f0b45a")
 const COLOR_TEXT := Color("eaf1f5")
@@ -18,6 +18,7 @@ const MAINTENANCE_ACTION_LIMIT := 1
 const ATMOSPHERE_BACKDROP_SCRIPT := preload("res://scripts/ui/atmosphere_backdrop.gd")
 const SESSION_SAVE_SCRIPT: Script = preload("res://scripts/simulation/session_save.gd")
 const USER_SETTINGS_SCRIPT: Script = preload("res://scripts/ui/user_settings.gd")
+const ART_CATALOG_SCRIPT: Script = preload("res://scripts/ui/art_catalog.gd")
 
 @export var save_path: String = "user://storm_desk_session.cfg"
 @export var settings_path: String = "user://settings.cfg"
@@ -49,6 +50,8 @@ var user_settings: RefCounted
 var modal_kind: StringName = &""
 var quit_was_requested: bool = false
 
+var bureau_background: TextureRect
+var maintenance_backdrop: TextureRect
 var atmosphere: Control
 var page_margin: MarginContainer
 var page_container: VBoxContainer
@@ -80,6 +83,10 @@ var severity_option: OptionButton
 var district_checks: Dictionary = {}
 var district_buttons: Dictionary = {}
 var warning_summary_label: Label
+var observation_art: TextureRect
+var regional_map_art: TextureRect
+var district_art: TextureRect
+var hazard_symbol: TextureRect
 var modal_layer: Control
 
 func _ready() -> void:
@@ -99,9 +106,19 @@ func _ready() -> void:
 	initialize_session()
 
 func build_interface() -> void:
+	bureau_background = make_art_rect(ART_CATALOG_SCRIPT.texture(ART_CATALOG_SCRIPT.BUREAU_BACKGROUND), TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+	bureau_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bureau_background)
+	maintenance_backdrop = make_art_rect(ART_CATALOG_SCRIPT.texture(ART_CATALOG_SCRIPT.MAINTENANCE_BACKGROUND), TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+	maintenance_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	maintenance_backdrop.modulate = Color(1.0, 1.0, 1.0, 0.42)
+	maintenance_backdrop.visible = false
+	add_child(maintenance_backdrop)
+
 	atmosphere = ATMOSPHERE_BACKDROP_SCRIPT.new() as Control
 	atmosphere.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(atmosphere)
+	atmosphere.call("set_art_backdrop_enabled", true)
 
 	page_margin = MarginContainer.new()
 	page_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -119,9 +136,23 @@ func build_interface() -> void:
 	header_panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 10))
 	header_panel.custom_minimum_size.y = 64
 	page_container.add_child(header_panel)
+	observation_art = make_art_rect(ART_CATALOG_SCRIPT.texture(ART_CATALOG_SCRIPT.OBSERVATION_CLEAR), TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+	observation_art.modulate = Color(1.0, 1.0, 1.0, 0.38)
+	header_panel.add_child(observation_art)
+	var header_scrim := ColorRect.new()
+	header_scrim.color = Color(0.025, 0.055, 0.078, 0.56)
+	header_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header_panel.add_child(header_scrim)
 	var header_row := HBoxContainer.new()
 	header_row.add_theme_constant_override("separation", 12)
 	header_panel.add_child(header_row)
+	var emblem := TextureRect.new()
+	emblem.texture = ART_CATALOG_SCRIPT.emblem_texture()
+	emblem.custom_minimum_size = Vector2(40, 40)
+	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header_row.add_child(emblem)
 	var title := make_label("STORM DESK", 23, COLOR_ACCENT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_child(title)
@@ -195,6 +226,13 @@ func build_map_panel() -> Control:
 	map_panel = panel
 	panel.custom_minimum_size.x = 335
 	panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL, 8))
+	regional_map_art = make_art_rect(ART_CATALOG_SCRIPT.texture(ART_CATALOG_SCRIPT.REGIONAL_MAP), TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+	regional_map_art.modulate = Color(1.0, 1.0, 1.0, 0.22)
+	panel.add_child(regional_map_art)
+	var map_scrim := ColorRect.new()
+	map_scrim.color = Color(0.025, 0.055, 0.075, 0.56)
+	map_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(map_scrim)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 9)
 	panel.add_child(box)
@@ -207,6 +245,10 @@ func build_map_panel() -> Control:
 		button.pressed.connect(show_district.bind(district))
 		district_buttons[district.id] = button
 		box.add_child(button)
+	district_art = make_art_rect(null, TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+	district_art.custom_minimum_size.y = 78
+	district_art.visible = false
+	box.add_child(district_art)
 	district_detail = make_label("Select a district for vulnerability details.", 14, COLOR_MUTED)
 	district_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	district_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -263,7 +305,15 @@ func build_actions_panel() -> Control:
 	return panel
 
 func build_warning_controls() -> void:
-	warning_box.add_child(make_label("Hazard classification", 15, COLOR_MUTED))
+	var hazard_header := HBoxContainer.new()
+	var hazard_heading := make_label("Hazard classification", 15, COLOR_MUTED)
+	hazard_heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hazard_header.add_child(hazard_heading)
+	hazard_symbol = make_art_rect(null, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	hazard_symbol.custom_minimum_size = Vector2(30, 30)
+	hazard_symbol.visible = false
+	hazard_header.add_child(hazard_symbol)
+	warning_box.add_child(hazard_header)
 	hazard_option = OptionButton.new()
 	set_scaled_font_size(hazard_option, 16)
 	hazard_option.add_item("No warning / stand down")
@@ -336,6 +386,9 @@ func reset_session_state() -> void:
 	maintenance_actions_used = 0
 	opening_damage_applied_days.clear()
 	selected_district = &""
+	if district_art != null:
+		district_art.texture = null
+		district_art.visible = false
 	action_feedback_label.text = ""
 	event_log.text = ""
 
@@ -562,6 +615,7 @@ func set_phase(next_phase: Phase) -> void:
 	phase_label.add_theme_color_override("font_color", accessible_color(accent))
 	status_panel.add_theme_stylebox_override("panel", bordered_panel_style(COLOR_PANEL_ALT, accent, 8, 12))
 	atmosphere.call("set_phase", int(phase))
+	refresh_art_presentation()
 	match phase:
 		Phase.MORNING_BRIEFING:
 			instruction_label.text = "Required: read the briefing."
@@ -621,6 +675,7 @@ func refresh_all() -> void:
 	refresh_network_actions()
 	refresh_district_markers()
 	refresh_warning_summary()
+	refresh_art_presentation()
 
 func refresh_readings() -> void:
 	clear_children(reading_box)
@@ -645,10 +700,19 @@ func refresh_readings() -> void:
 			tag = "SUSPECT"
 		var row := PanelContainer.new()
 		row.add_theme_stylebox_override("panel", reading_panel_style(quality))
-		var row_box := VBoxContainer.new()
+		var row_box := HBoxContainer.new()
+		row_box.add_theme_constant_override("separation", 10)
 		row.add_child(row_box)
-		row_box.add_child(make_label("%s  [%s]" % [str(reading.get("instrument", "Instrument")), tag], 14, COLOR_WARNING if quality != "clear" else COLOR_MUTED))
-		row_box.add_child(make_label(str(reading.get("value", "No reading")), 17, COLOR_TEXT))
+		var instrument_name: String = str(reading.get("instrument", "Instrument"))
+		var instrument_art := make_art_rect(ART_CATALOG_SCRIPT.instrument_texture(instrument_name), TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+		instrument_art.custom_minimum_size = Vector2(58, 58)
+		instrument_art.modulate = Color(0.72, 0.78, 0.82, 0.52) if quality == "missing" else Color.WHITE
+		row_box.add_child(instrument_art)
+		var reading_copy := VBoxContainer.new()
+		reading_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		reading_copy.add_child(make_label("%s  [%s]" % [instrument_name, tag], 14, COLOR_WARNING if quality != "clear" else COLOR_MUTED))
+		reading_copy.add_child(make_wrapped_label(str(reading.get("value", "No reading")), 17, COLOR_TEXT))
+		row_box.add_child(reading_copy)
 		reading_box.add_child(row)
 
 func refresh_network_actions() -> void:
@@ -985,6 +1049,8 @@ func show_final_report() -> void:
 
 func on_hazard_selected(index: int) -> void:
 	selected_hazard = StringName(hazard_option.get_item_metadata(index))
+	hazard_symbol.texture = ART_CATALOG_SCRIPT.hazard_symbol_texture(selected_hazard)
+	hazard_symbol.visible = hazard_symbol.texture != null
 	severity_option.disabled = selected_hazard == &""
 	for check: CheckBox in district_checks.values():
 		check.disabled = selected_hazard == &""
@@ -1015,6 +1081,8 @@ func on_district_toggled(enabled: bool, district_id: StringName) -> void:
 
 func show_district(district: DistrictDefinition) -> void:
 	selected_district = district.id
+	district_art.texture = ART_CATALOG_SCRIPT.district_texture(district.id)
+	district_art.visible = district_art.texture != null
 	set_district_detail(district)
 	log_event("Map selected: %s" % district.display_name)
 	refresh_district_markers()
@@ -1023,6 +1091,19 @@ func show_district(district: DistrictDefinition) -> void:
 
 func set_district_detail(district: DistrictDefinition) -> void:
 	district_detail.text = "%s\n\n%s\n\nVulnerability multipliers\nSparkstorm %.1fx  /  Glasswind %.1fx  /  Cloudburst %.1fx" % [district.display_name, district.description, district.vulnerability_for(&"sparkstorm"), district.vulnerability_for(&"glasswind"), district.vulnerability_for(&"cloudburst")]
+
+func refresh_art_presentation() -> void:
+	if bureau_background == null or observation_art == null:
+		return
+	maintenance_backdrop.visible = phase == Phase.MAINTENANCE
+	var actual_hazard: StringName = StringName(scenario.get("hazard", &""))
+	observation_art.texture = ART_CATALOG_SCRIPT.observation_texture(int(phase), actual_hazard)
+	if selected_district == &"":
+		district_art.texture = null
+		district_art.visible = false
+	else:
+		district_art.texture = ART_CATALOG_SCRIPT.district_texture(selected_district)
+		district_art.visible = district_art.texture != null
 
 func show_settings() -> void:
 	clear_children(modal_layer)
@@ -1037,7 +1118,7 @@ func show_settings() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal_layer.add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(880, 570)
+	panel.custom_minimum_size = Vector2(880, 650)
 	panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL_ALT, 14, 22))
 	center.add_child(panel)
 	var box := VBoxContainer.new()
@@ -1082,6 +1163,9 @@ func show_settings() -> void:
 		replay_guided_tour()
 	)
 	help_row.add_child(tour_button)
+	var gallery_button := make_button("Artwork Gallery — review all 38 generated images")
+	gallery_button.pressed.connect(show_art_gallery.bind(0))
+	box.add_child(gallery_button)
 	box.add_child(make_label("SESSION", 16, COLOR_WARNING))
 	box.add_child(make_wrapped_label("Autosave already protects completed actions. Save Progress writes the current resumable state immediately.", 14, COLOR_MUTED))
 	var session_row := HBoxContainer.new()
@@ -1106,9 +1190,63 @@ func show_settings() -> void:
 	close_button.custom_minimum_size.y = 42
 	close_button.pressed.connect(close_modal)
 	box.add_child(close_button)
-	var focus_controls: Array[Control] = [reduced_motion_check, large_text_check, high_contrast_check, rules_button, tour_button, save_button, save_quit_button, quit_button, close_button]
+	var focus_controls: Array[Control] = [reduced_motion_check, large_text_check, high_contrast_check, rules_button, tour_button, gallery_button, save_button, save_quit_button, quit_button, close_button]
 	wire_focus_cycle(focus_controls)
 	reduced_motion_check.call_deferred("grab_focus")
+
+func show_art_gallery(requested_index: int = 0) -> void:
+	clear_children(modal_layer)
+	modal_kind = &"gallery"
+	modal_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	modal_layer.modulate = Color.WHITE
+	var entries: Array[Dictionary] = ART_CATALOG_SCRIPT.GALLERY_ENTRIES
+	var index: int = posmod(requested_index, entries.size())
+	var entry: Dictionary = entries[index]
+	var scrim := ColorRect.new()
+	scrim.color = Color(0.005, 0.01, 0.018, 0.96) if high_contrast_enabled() else Color(0.012, 0.024, 0.038, 0.92)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal_layer.add_child(scrim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal_layer.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(1160, 660)
+	panel.add_theme_stylebox_override("panel", panel_style(COLOR_PANEL_ALT, 12, 16))
+	center.add_child(panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	panel.add_child(box)
+	var title_row := HBoxContainer.new()
+	box.add_child(title_row)
+	var title := make_label("ARTWORK GALLERY", 22, COLOR_ACCENT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(title)
+	title_row.add_child(make_label("%d / %d" % [index + 1, entries.size()], 15, COLOR_WARNING))
+	box.add_child(make_label(str(entry.get("name", "Generated artwork")), 16, COLOR_TEXT))
+	var image_panel := PanelContainer.new()
+	image_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	image_panel.add_theme_stylebox_override("panel", bordered_panel_style(Color("08111a"), Color("52687a"), 6, 6))
+	box.add_child(image_panel)
+	var art := make_art_rect(ART_CATALOG_SCRIPT.texture(str(entry.get("path", ""))), TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	image_panel.add_child(art)
+	var actions := HBoxContainer.new()
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	actions.add_theme_constant_override("separation", 10)
+	box.add_child(actions)
+	var previous_button := make_button("Previous")
+	previous_button.custom_minimum_size.x = 180
+	previous_button.pressed.connect(show_art_gallery.bind(index - 1))
+	actions.add_child(previous_button)
+	var settings_button := make_button("Return to Settings")
+	settings_button.custom_minimum_size.x = 220
+	settings_button.pressed.connect(show_settings)
+	actions.add_child(settings_button)
+	var next_button := make_button("Next")
+	next_button.custom_minimum_size.x = 180
+	next_button.pressed.connect(show_art_gallery.bind(index + 1))
+	actions.add_child(next_button)
+	wire_focus_cycle([previous_button, settings_button, next_button])
+	next_button.call_deferred("grab_focus")
 
 func update_accessibility_setting(enabled: bool, setting_name: StringName) -> void:
 	user_settings.set(setting_name, enabled)
@@ -1122,6 +1260,14 @@ func update_accessibility_setting(enabled: bool, setting_name: StringName) -> vo
 func apply_accessibility_preferences() -> void:
 	if atmosphere != null:
 		atmosphere.call("set_accessibility", reduced_motion_enabled(), high_contrast_enabled())
+	if bureau_background != null:
+		bureau_background.modulate = Color(1.0, 1.0, 1.0, 0.62 if high_contrast_enabled() else 0.92)
+	if observation_art != null:
+		observation_art.modulate = Color(1.0, 1.0, 1.0, 0.22 if high_contrast_enabled() else 0.38)
+	if regional_map_art != null:
+		regional_map_art.modulate = Color(1.0, 1.0, 1.0, 0.12 if high_contrast_enabled() else 0.22)
+	if maintenance_backdrop != null:
+		maintenance_backdrop.modulate = Color(1.0, 1.0, 1.0, 0.26 if high_contrast_enabled() else 0.42)
 	apply_control_preferences(self)
 	var compact_large_text: bool = current_text_scale() > 1.0
 	if page_margin != null:
@@ -1236,12 +1382,22 @@ func tutorial_target(target_id: StringName) -> Control:
 	return null
 
 func show_modal(title_text: String, body_text: String, primary_text: String, primary_action: Callable, secondary_text: String = "", secondary_action: Callable = Callable()) -> void:
+	var document_texture: Texture2D = ART_CATALOG_SCRIPT.document_texture(title_text)
+	if document_texture != null:
+		show_document_modal(title_text, body_text, primary_text, primary_action, secondary_text, secondary_action, document_texture)
+		return
 	clear_children(modal_layer)
 	modal_kind = &"generic"
 	modal_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	modal_layer.modulate = Color.WHITE if reduced_motion_enabled() else Color(1.0, 1.0, 1.0, 0.0)
+	var normalized_title: String = title_text.to_upper()
+	var use_title_art: bool = normalized_title.contains("CONTINUE FIRST WEEK") or (normalized_title.contains("MORNING BRIEFING") and day_index == 0)
+	if use_title_art:
+		var title_art := make_art_rect(ART_CATALOG_SCRIPT.texture(ART_CATALOG_SCRIPT.TITLE_BACKGROUND), TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+		title_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		modal_layer.add_child(title_art)
 	var scrim := ColorRect.new()
-	scrim.color = Color(0.005, 0.01, 0.018, 0.9) if high_contrast_enabled() else Color(0.02, 0.04, 0.07, 0.82)
+	scrim.color = Color(0.005, 0.01, 0.018, 0.9) if high_contrast_enabled() else Color(0.02, 0.04, 0.07, 0.70 if use_title_art else 0.82)
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal_layer.add_child(scrim)
 	var center := CenterContainer.new()
@@ -1290,6 +1446,164 @@ func show_modal(title_text: String, body_text: String, primary_text: String, pri
 		var modal_tween: Tween = create_tween()
 		modal_tween.tween_property(modal_layer, "modulate", Color.WHITE, 0.18)
 
+func show_document_modal(title_text: String, body_text: String, primary_text: String, primary_action: Callable, secondary_text: String, secondary_action: Callable, document_texture: Texture2D) -> void:
+	clear_children(modal_layer)
+	modal_kind = &"generic"
+	modal_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	modal_layer.modulate = Color.WHITE if reduced_motion_enabled() else Color(1.0, 1.0, 1.0, 0.0)
+	var normalized_title: String = title_text.to_upper()
+	var document_kind: StringName = document_kind_for_title(normalized_title)
+	if document_kind == &"briefing" and day_index == 0:
+		var title_art := make_art_rect(ART_CATALOG_SCRIPT.texture(ART_CATALOG_SCRIPT.TITLE_BACKGROUND), TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+		title_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		modal_layer.add_child(title_art)
+	var scrim := ColorRect.new()
+	scrim.color = Color(0.005, 0.01, 0.018, 0.82 if high_contrast_enabled() else 0.70)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal_layer.add_child(scrim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal_layer.add_child(center)
+	var frame := Control.new()
+	frame.custom_minimum_size = document_frame_size(document_texture)
+	frame.set_meta("art_document_frame", document_kind)
+	center.add_child(frame)
+	var document_art := make_art_rect(document_texture, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	document_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(document_art)
+	var ink: Color = Color("08151c") if high_contrast_enabled() else Color("173442")
+	var title := make_label(title_text, document_title_font_size(document_kind), ink)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_color_override("font_shadow_color", Color(1.0, 0.96, 0.82, 0.72))
+	title.add_theme_constant_override("shadow_offset_x", 1)
+	title.add_theme_constant_override("shadow_offset_y", 1)
+	apply_normalized_rect(title, document_title_rect(document_kind))
+	frame.add_child(title)
+	add_document_body(frame, document_kind, body_text, ink)
+	var actions := HBoxContainer.new()
+	actions.alignment = BoxContainer.ALIGNMENT_END
+	actions.add_theme_constant_override("separation", 8)
+	apply_normalized_rect(actions, document_action_rect(document_kind))
+	frame.add_child(actions)
+	var focus_controls: Array[Control] = []
+	if not secondary_text.is_empty():
+		var secondary := make_button(secondary_text)
+		secondary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		secondary.pressed.connect(func() -> void:
+			close_modal()
+			secondary_action.call()
+		)
+		actions.add_child(secondary)
+		focus_controls.append(secondary)
+	var primary := make_button(primary_text)
+	primary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	primary.pressed.connect(func() -> void:
+		close_modal()
+		primary_action.call()
+	)
+	actions.add_child(primary)
+	focus_controls.append(primary)
+	wire_focus_cycle(focus_controls)
+	primary.call_deferred("grab_focus")
+	if not reduced_motion_enabled():
+		var modal_tween: Tween = create_tween()
+		modal_tween.tween_property(modal_layer, "modulate", Color.WHITE, 0.18)
+
+func document_kind_for_title(normalized_title: String) -> StringName:
+	if normalized_title.contains("MORNING BRIEFING"):
+		return &"briefing"
+	if normalized_title.contains("CONFIRM WARNING"):
+		return &"warning"
+	if normalized_title.contains("FIVE-DAY"):
+		return &"final_report"
+	return &"daily_report"
+
+func document_frame_size(document_texture: Texture2D) -> Vector2:
+	var texture_size: Vector2 = document_texture.get_size()
+	var frame_height: float = 680.0
+	return Vector2(frame_height * texture_size.x / texture_size.y, frame_height)
+
+func document_title_rect(document_kind: StringName) -> Rect2:
+	match document_kind:
+		&"briefing":
+			return Rect2(0.145, 0.105, 0.66, 0.075)
+		&"warning":
+			return Rect2(0.115, 0.155, 0.66, 0.07)
+		&"final_report":
+			return Rect2(0.59, 0.16, 0.31, 0.06)
+	return Rect2(0.28, 0.12, 0.43, 0.055)
+
+func document_action_rect(document_kind: StringName) -> Rect2:
+	match document_kind:
+		&"briefing":
+			return Rect2(0.145, 0.86, 0.65, 0.055)
+		&"warning":
+			return Rect2(0.115, 0.85, 0.65, 0.06)
+		&"final_report":
+			return Rect2(0.54, 0.84, 0.36, 0.06)
+	return Rect2(0.11, 0.86, 0.70, 0.06)
+
+func document_title_font_size(document_kind: StringName) -> int:
+	return 18 if document_kind == &"daily_report" or document_kind == &"final_report" else 20
+
+func add_document_body(frame: Control, document_kind: StringName, body_text: String, ink: Color) -> void:
+	match document_kind:
+		&"briefing":
+			add_document_scroll(frame, Rect2(0.145, 0.30, 0.65, 0.30), body_text, 14, ink, false)
+		&"warning":
+			add_document_scroll(frame, Rect2(0.115, 0.24, 0.65, 0.29), body_text, 15, ink, false)
+		&"daily_report":
+			var sections: PackedStringArray = body_text.split("\n\nCALCULATION\n", false, 2)
+			add_document_scroll(frame, Rect2(0.35, 0.18, 0.48, 0.23), sections[0], 12, ink, true)
+			var calculation_text: String = "CALCULATION"
+			if sections.size() > 1:
+				calculation_text += "\n" + sections[1]
+			add_document_scroll(frame, Rect2(0.17, 0.54, 0.64, 0.25), calculation_text, 11, ink, true)
+		&"final_report":
+			add_document_scroll(frame, Rect2(0.54, 0.21, 0.36, 0.60), body_text, 13, ink, true)
+
+func add_document_scroll(frame: Control, rect: Rect2, text_value: String, font_size: int, ink: Color, use_paper_backing: bool) -> void:
+	var host: Control
+	if use_paper_backing:
+		var panel := PanelContainer.new()
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.96, 0.90, 0.76, 0.82 if high_contrast_enabled() else 0.68)
+		style.corner_radius_top_left = 4
+		style.corner_radius_top_right = 4
+		style.corner_radius_bottom_left = 4
+		style.corner_radius_bottom_right = 4
+		style.content_margin_left = 7
+		style.content_margin_right = 7
+		style.content_margin_top = 6
+		style.content_margin_bottom = 6
+		panel.add_theme_stylebox_override("panel", style)
+		apply_normalized_rect(panel, rect)
+		frame.add_child(panel)
+		host = panel
+	else:
+		var body_host := Control.new()
+		apply_normalized_rect(body_host, rect)
+		frame.add_child(body_host)
+		host = body_host
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	host.add_child(scroll)
+	var body := make_label(text_value, font_size, ink)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size.x = maxf(120.0, frame.custom_minimum_size.x * rect.size.x - (18.0 if use_paper_backing else 4.0))
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_color_override("font_shadow_color", Color(1.0, 0.96, 0.82, 0.66))
+	body.add_theme_constant_override("shadow_offset_x", 1)
+	body.add_theme_constant_override("shadow_offset_y", 1)
+	scroll.add_child(body)
+
+func apply_normalized_rect(control: Control, rect: Rect2) -> void:
+	control.anchor_left = rect.position.x
+	control.anchor_top = rect.position.y
+	control.anchor_right = rect.end.x
+	control.anchor_bottom = rect.end.y
+
 func close_modal() -> void:
 	clear_children(modal_layer)
 	modal_kind = &""
@@ -1310,9 +1624,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		show_settings()
 		get_viewport().set_input_as_handled()
 		return
-	if key_event.keycode == KEY_ESCAPE and modal_kind == &"settings":
-		close_modal()
-		help_button.grab_focus()
+	if key_event.keycode == KEY_ESCAPE and (modal_kind == &"settings" or modal_kind == &"gallery"):
+		if modal_kind == &"gallery":
+			show_settings()
+		else:
+			close_modal()
+			help_button.grab_focus()
 		get_viewport().set_input_as_handled()
 
 func log_event(message: String) -> void:
@@ -1477,6 +1794,14 @@ func make_button(text_value: String) -> Button:
 	apply_button_style(button)
 	return button
 
+func make_art_rect(texture_value: Texture2D, stretch_value: int) -> TextureRect:
+	var art := TextureRect.new()
+	art.texture = texture_value
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = stretch_value
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return art
+
 func set_scaled_font_size(control: Control, base_size: int) -> void:
 	control.set_meta("base_font_size", base_size)
 	control.add_theme_font_size_override("font_size", roundi(float(base_size) * current_text_scale()))
@@ -1510,7 +1835,7 @@ func accessible_color(color: Color) -> Color:
 func accessible_panel_color(color: Color) -> Color:
 	if not high_contrast_enabled() or color.a < 0.05:
 		return color
-	return Color(color.r * 0.48, color.g * 0.48, color.b * 0.48, color.a)
+	return Color(color.r * 0.48, color.g * 0.48, color.b * 0.48, maxf(color.a, 0.98))
 
 func apply_button_style(button: Button) -> void:
 	button.add_theme_stylebox_override("normal", bordered_panel_style(Color("17222d"), Color("40576a"), 5, 9, 2 if high_contrast_enabled() else 1))

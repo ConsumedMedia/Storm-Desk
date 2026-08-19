@@ -1,6 +1,6 @@
 # Prototype Plan
 
-Last updated: 2026-08-16
+Last updated: 2026-08-19
 
 ## Completed
 
@@ -21,12 +21,14 @@ Last updated: 2026-08-16
 - Added a scenario-authoring system with five Inspector-editable day Resources, deterministic catalog conversion, and descriptive validation for ordering, references, nested records, timing, and evidence consistency.
 - Added a versioned local autosave/resume system for complete coordinator and network state, launch-time Resume/Start New choice, corrupt/incompatible-save rejection, and completion cleanup.
 - Added a combined Settings surface with persistent reduced motion, 115% larger text, high-contrast/color assistance, help and guided-tour access, manual save, Save & Quit, Quit to Desktop, keyboard shortcuts, and modal focus cycles.
-- Expanded to 110 dependency-free automated checks plus eight graphics-backed 1280×720 regression captures covering Day Four, maintenance, warnings, results, onboarding, resume choice, Settings, and accessible gameplay.
+- Integrated all 38 generated preview images through a typed art catalog. Clean individual assets now appear in the title/resume screen, bureau desk, district and instrument panels, warning desk, reports, and overnight maintenance; every concept is also reviewable through the in-game Artwork Gallery before Photoshop refinement.
+- Replaced the generic panel surrounding illustrated documents with artwork-native briefing, warning, daily-report, and final-report frames. Live text, scroll regions, and buttons occupy normalized safe zones inside each image while utility dialogs retain the standard interface panel.
+- Expanded to 118 dependency-free automated checks plus eleven graphics-backed 1280×720 regression helpers covering Day Four, maintenance, warnings, results, onboarding, resume choice, Settings, accessible gameplay, artwork-enhanced gameplay, the Artwork Gallery, and artwork-native documents.
 - Added actual implementation documentation.
 
 ## Current work
 
-The contained first-week, between-day maintenance, interface feedback, scenario-authoring/validation, save/resume, and accessibility/settings milestones are complete. The next product task is structured external playtesting and balance iteration unless the owner chooses another contained development milestone first.
+The contained first-week, between-day maintenance, interface feedback, scenario-authoring/validation, save/resume, accessibility/settings, and generated-art preview milestones are complete. The generated artwork is intentionally provisional; the next visual task is evaluating it in play and refining selected files in Photoshop. Structured external playtesting and balance iteration remain the next product task unless the owner chooses another contained milestone first.
 
 ## Remaining milestones
 
@@ -35,7 +37,7 @@ The contained first-week, between-day maintenance, interface feedback, scenario-
 
 ## Deferred
 
-Final art/audio, multiple save slots, cloud synchronization, longer campaign structure, procedural scenarios, staff systems, Steam integration, achievements, localization, accessibility narration, multiplayer, external services, monetization, and commercial production.
+Final polished art/audio, multiple save slots, cloud synchronization, longer campaign structure, procedural scenarios, staff systems, Steam integration, achievements, localization, accessibility narration, multiplayer, external services, monetization, and commercial production.
 
 ## Risks
 

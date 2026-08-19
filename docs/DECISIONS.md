@@ -121,3 +121,13 @@ Decision: replace the header's direct Rules / Help button with one keyboard-acce
 Reason: accessibility and session controls should be discoverable in one predictable place. Immediate preference application lets players evaluate changes without restarting, while bounded scaling and compact large-text spacing preserve the tested 1280×720 layout. Explicit text tags remain the source of truth so contrast changes never make color the sole state cue.
 
 Alternatives considered: separate Help, Accessibility, Save, and Quit menus; unrestricted UI scaling; remappable controls; or a title-screen settings scene. Deferred because the prototype has one gameplay scene, a fixed reference resolution, and no action-remapping requirement yet.
+
+## 2026-08-19 — Integrate generated art through a replaceable preview layer
+
+Decision: preserve the generated originals under the ignored `art_source/generated/` workspace and copy their current versions into categorized runtime paths under `assets/art/`. Use a typed `ArtCatalog` to place clean individual assets in the title/resume screen, bureau background, observation header, district details, instrument cards, warning desk, reports, and overnight maintenance. Make every one of the 38 concepts visible in a keyboard-accessible Settings gallery, including composite sheets that still need a Photoshop cleanup or slicing pass. Dedicated document artwork supplies the complete visible modal frame; normalized safe regions place live content directly on the paper and the generic blue panel is not rendered around or over it.
+
+Reason: the owner needs to judge the generated images in the actual game before committing time to destructive Photoshop edits. A catalog keeps filenames and presentation choices centralized, allows individual images to be replaced without touching simulation code, and lets composite sheets remain inspectable without forcing visually poor crops into gameplay.
+
+Constraint: hazard-specific weather art does not appear until storm resolution or the daily report, so it cannot reveal the hidden answer during observation and warning decisions. Live text, quality labels, focus paths, and high-contrast panels remain authoritative over decorative art.
+
+Alternatives considered: edit every source image before integration, use all composite sheets immediately as cropped gameplay sprites, or replace the UI wholesale with one painted interface. Deferred because each would make evaluation slower, introduce visible sheet backgrounds/seams, or weaken the existing accessible and tested interaction structure.

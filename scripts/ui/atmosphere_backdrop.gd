@@ -12,6 +12,7 @@ var phase_value: int = 0
 var motion: float = 0.0
 var reduced_motion: bool = false
 var high_contrast: bool = false
+var art_backdrop_enabled: bool = false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -27,6 +28,10 @@ func set_accessibility(reduce_motion: bool, use_high_contrast: bool) -> void:
 	set_process(not reduced_motion)
 	queue_redraw()
 
+func set_art_backdrop_enabled(enabled: bool) -> void:
+	art_backdrop_enabled = enabled
+	queue_redraw()
+
 func _process(delta: float) -> void:
 	if reduced_motion:
 		return
@@ -40,6 +45,9 @@ func _draw() -> void:
 		var band_rect := Rect2(0.0, size.y * amount, size.x, size.y / float(bands) + 1.0)
 		var top: Color = Color("0d1824") if high_contrast else BASE_TOP
 		var bottom: Color = Color("03070d") if high_contrast else BASE_BOTTOM
+		if art_backdrop_enabled:
+			top.a = 0.42 if high_contrast else 0.16
+			bottom.a = 0.62 if high_contrast else 0.26
 		draw_rect(band_rect, top.lerp(bottom, amount))
 	var accent: Color = phase_accent()
 	for index: int in range(9):

@@ -2,6 +2,7 @@ extends SceneTree
 
 const SESSION_SAVE_SCRIPT: Script = preload("res://scripts/simulation/session_save.gd")
 const USER_SETTINGS_SCRIPT: Script = preload("res://scripts/ui/user_settings.gd")
+const ART_CATALOG_SCRIPT: Script = preload("res://scripts/ui/art_catalog.gd")
 const MAIN_TEST_SAVE_PATH: String = "user://storm_desk_main_test.cfg"
 const MAIN_TEST_SETTINGS_PATH: String = "user://storm_desk_main_settings_test.cfg"
 const INVALID_TEST_SAVE_PATH: String = "user://storm_desk_invalid_test.cfg"
@@ -159,16 +160,28 @@ func run_all() -> void:
 	main.set("settings_path", MAIN_TEST_SETTINGS_PATH)
 	main.set("quitting_enabled", false)
 	root.add_child(main)
+	check(node_contains_meta_value(main.get("modal_layer") as Node, &"art_document_frame", &"briefing"), "Morning briefing uses its artwork as the popup frame")
 	main.call("close_modal")
+	var all_art_assets_available: bool = true
+	for art_entry: Dictionary in ART_CATALOG_SCRIPT.GALLERY_ENTRIES:
+		if not ResourceLoader.exists(str(art_entry.get("path", "")), "Texture2D"):
+			all_art_assets_available = false
+			break
+	check(ART_CATALOG_SCRIPT.GALLERY_ENTRIES.size() == 38 and all_art_assets_available, "All 38 generated artwork files are available through the runtime catalog")
+	check((main.get("bureau_background") as TextureRect).texture != null and (main.get("regional_map_art") as TextureRect).texture != null, "Main bureau and regional map artwork load into gameplay")
 	var f1_event := InputEventKey.new()
 	f1_event.keycode = KEY_F1
 	f1_event.pressed = true
 	main.call("_unhandled_key_input", f1_event)
 	var settings_modal: Node = main.get("modal_layer") as Node
-	check(node_contains_control_text(settings_modal, "SETTINGS") and node_contains_control_text(settings_modal, "Save Progress") and node_contains_control_text(settings_modal, "Save & Quit") and node_contains_control_text(settings_modal, "Quit to Desktop"), "F1 opens one Settings menu containing accessibility, save, and quit controls")
+	check(node_contains_control_text(settings_modal, "SETTINGS") and node_contains_control_text(settings_modal, "Artwork Gallery") and node_contains_control_text(settings_modal, "Save Progress") and node_contains_control_text(settings_modal, "Save & Quit") and node_contains_control_text(settings_modal, "Quit to Desktop"), "F1 opens one Settings menu containing artwork, accessibility, save, and quit controls")
 	var escape_event := InputEventKey.new()
 	escape_event.keycode = KEY_ESCAPE
 	escape_event.pressed = true
+	main.call("show_art_gallery", 11)
+	check(StringName(main.get("modal_kind")) == &"gallery" and node_contains_control_text(settings_modal, "12  Bureau Headquarters"), "Artwork Gallery can review the corrected Bureau Headquarters asset")
+	main.call("_unhandled_key_input", escape_event)
+	check(StringName(main.get("modal_kind")) == &"settings" and node_contains_control_text(settings_modal, "Artwork Gallery"), "Escape returns from the artwork gallery to Settings")
 	main.call("_unhandled_key_input", escape_event)
 	check(StringName(main.get("modal_kind")) == &"" and (main.get("help_button") as Button).has_focus(), "Escape closes Settings and restores keyboard focus to its header button")
 	main.call("update_accessibility_setting", true, &"reduced_motion")
@@ -243,9 +256,12 @@ func run_all() -> void:
 	var draft_save_result: Dictionary = SESSION_SAVE_SCRIPT.read(MAIN_TEST_SAVE_PATH) as Dictionary
 	var draft_save_state: Dictionary = draft_save_result.get("state", {}) as Dictionary
 	check(StringName(draft_save_state.get("selected_hazard", &"")) == &"sparkstorm" and (draft_save_state.get("warned_districts", []) as Array).has(&"industrial"), "Autosave records the editable warning draft")
+	main.call("show_warning_confirmation")
+	check(node_contains_meta_value(main.get("modal_layer") as Node, &"art_document_frame", &"warning"), "Warning confirmation uses its artwork as the popup frame")
 	main.call("confirm_warning")
 	check((main.get("reports") as Array).size() == 1 and int(main.get("day_index")) == 0, "Coordinator resolves Day One and records its report")
 	check(node_contains_text(main.get("modal_layer") as Node, "ASSESSMENT: EFFECTIVE WARNING"), "Daily report opens with a plain-language outcome assessment")
+	check(node_contains_meta_value(main.get("modal_layer") as Node, &"art_document_frame", &"daily_report"), "Daily outcome uses its artwork as the popup frame")
 	check((district_buttons[&"industrial"] as Button).text.contains("PROTECTED"), "Resolved warning leaves a labeled protected-district marker")
 	main.call("open_maintenance")
 	main.call("close_modal")
@@ -348,6 +364,7 @@ func run_all() -> void:
 	check((main.get("reports") as Array).size() == 5 and int(main.get("day_index")) == 4, "Coordinator completes all five first-week scenarios")
 	main.call("show_final_report")
 	check(int(main.get("phase")) == 7, "Coordinator reaches the five-day performance report")
+	check(node_contains_meta_value(main.get("modal_layer") as Node, &"art_document_frame", &"final_report"), "Five-day report uses its artwork as the popup frame")
 	check(not SESSION_SAVE_SCRIPT.exists(MAIN_TEST_SAVE_PATH), "Completing the first week clears its resumable autosave")
 	main.set("budget", 1)
 	main.set("trust", 2)
@@ -434,6 +451,14 @@ func node_contains_control_text(node: Node, expected: String) -> bool:
 		return true
 	for child: Node in node.get_children():
 		if node_contains_control_text(child, expected):
+			return true
+	return false
+
+func node_contains_meta_value(node: Node, key: StringName, expected: StringName) -> bool:
+	if node.has_meta(key) and StringName(node.get_meta(key)) == expected:
+		return true
+	for child: Node in node.get_children():
+		if node_contains_meta_value(child, key, expected):
 			return true
 	return false
 

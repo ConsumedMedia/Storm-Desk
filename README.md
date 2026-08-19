@@ -32,7 +32,7 @@ Progress autosaves locally after completed actions and phase changes. If an unfi
 
 Mouse and keyboard focus navigation are supported by standard Godot Controls. The interface does not rely on color alone: phases, qualities, disabled actions, and warnings are labeled in text.
 
-Press `F1` to open Settings, `Escape` to close Settings, and `Ctrl+S` to save progress. Settings provides reduced motion, 115% larger text, high-contrast/color assistance, Rules / Help, guided-tour replay, Save Progress, Save & Quit, and Quit to Desktop.
+Press `F1` to open Settings, `Escape` to close Settings, and `Ctrl+S` to save progress. Settings provides reduced motion, 115% larger text, high-contrast/color assistance, Rules / Help, guided-tour replay, an Artwork Gallery, Save Progress, Save & Quit, and Quit to Desktop.
 
 ## Current prototype scope
 
@@ -55,9 +55,10 @@ Press `F1` to open Settings, `Escape` to close Settings, and `Ctrl+S` to save pr
 - Persistent accessibility settings for reduced motion, larger interface text, and high-contrast/color-assisted presentation
 - One keyboard-accessible Settings menu combining preferences, Rules / Help, tour replay, manual save, Save & Quit, and Quit to Desktop
 - Code-drawn atmospheric backdrop, phase-colored status, resource feedback, accessible network legend, warning/protected/missed district markers, and assessment-led reports
-- Local placeholder interface made only from Godot Controls, draw calls, and built-in fonts
+- Generated preview artwork for the bureau, title/resume screen, districts, instruments, weather phases, maintenance, reports, and hazard symbols. Briefing, warning, daily-report, and final-report artwork serves as the actual popup frame rather than sitting behind a generic panel; all 38 source concepts remain reviewable in the in-game Artwork Gallery
+- Replaceable Godot Control presentation that retains live text, state labels, keyboard access, and high-contrast treatment over the preview artwork
 
-Out of scope: multiplayer, networking, accounts, Steam integration, multiple save slots, cloud saves, achievements, final art, realistic fluid simulation, characters, staff systems, localization, and external services.
+Out of scope: multiplayer, networking, accounts, Steam integration, multiple save slots, cloud saves, achievements, final polished art, realistic fluid simulation, characters, staff systems, localization, and external services.
 
 ## Validation
 
@@ -67,14 +68,16 @@ Run the repository-native checks without installing a test framework:
 godot --headless --path . --script res://tests/run_tests.gd
 ```
 
-The suite validates persistent accessibility preferences, tutorial-setting preservation, reduced motion, large-text scaling, high contrast, keyboard Settings flow, manual save and quit requests, save creation/corruption/version handling, exact mid-day restoration, scenario validation, simulation and network behavior, guided-tour progression, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-16 passed 110 checks with exit code 0 under Godot 4.7.1.
+The suite validates persistent accessibility preferences, tutorial-setting preservation, reduced motion, large-text scaling, high contrast, keyboard Settings/gallery flow, all 38 runtime artwork paths, artwork-native document frames, manual save and quit requests, save creation/corruption/version handling, exact mid-day restoration, scenario validation, simulation and network behavior, guided-tour progression, all five coordinator-driven days, final-report transition, and restart. The last full run on 2026-08-19 passed 118 checks with exit code 0 under Godot 4.7.1.
 
-Eight graphics-backed visual-QA helpers cover the dense Day Four recovery screen, first overnight desk, warning draft, daily result, guided onboarding, resume prompt, combined Settings menu, and large-text/high-contrast gameplay. Run the `tests/capture_*.gd` scripts with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical states and bounds.
+Eleven graphics-backed visual-QA helpers cover the dense Day Four recovery screen, first overnight desk, warning draft, daily result, guided onboarding, resume prompt, combined Settings menu, large-text/high-contrast gameplay, artwork-enhanced gameplay, the Artwork Gallery, and all four artwork-native document formats. Run the `tests/capture_*.gd` scripts with a graphics display (not `--headless`); they save ignored captures under `.godot/` and assert critical states and bounds.
 
 ## Repository structure
 
 - `scenes/main/` — launch scene
 - `scripts/ui/` — state-driven interface coordinator
+- `assets/art/` — imported runtime copies of the generated preview artwork
+- `art_source/generated/` — ignored working originals for later Photoshop revisions
 - `scripts/simulation/` — resource schemas, deterministic content catalog and validator, save service, network model, evaluator, and outcome calculation
 - `resources/hazards/`, `resources/districts/`, and `resources/scenarios/` — editable `.tres` content
 - `tests/` — dependency-free checks and capture helper
@@ -86,5 +89,5 @@ Eight graphics-backed visual-QA helpers cover the dense Day Four recovery screen
 - Scenario days are fixed custom Resources. Their nested reading, action, and opening-damage records remain Inspector-editable Dictionaries protected by startup validation rather than separate Resource types.
 - The district map remains a structured board; network construction uses a fixed-node graph rather than free placement or terrain simulation.
 - The UI is tuned for a 1280×720 reference window; very small windows are not a target.
-- Audio, full production animation, final art, accessibility narration, and localization are deferred.
+- Audio, full production animation, final polished art, accessibility narration, and localization are deferred.
 - Guided-tour completion and accessibility preferences share separate sections in `user://settings.cfg`. The active first week is stored in `user://storm_desk_session.cfg`; finished weeks are not retained as history.
